@@ -1,0 +1,40 @@
+#include<iostream>
+using namespace std;
+int n,m;
+struct midnode{
+     int fig;
+     int weight;
+     int layer;
+     midnode*next;
+};
+struct tophead{
+    int toproot;
+    midnode*link;
+};
+tophead topnode[20];
+void creattop()
+{
+     for(int i=1;i<=n;i++)
+     {
+        topnode[i].toproot=i;
+     }
+}
+void creatgraph()
+{
+    int s1,s2,s3;
+    for(int i=0;i<m;i++)
+    {
+        midnode*p=new midnode();
+        cin>>s1>>s2;
+        topnode[s1].link=p;
+        p->fig=s2;
+        p->weight=s3;
+        p->layer+=1;
+        p->next=topnode[s1].link;
+        topnode[s1].link=p;
+    }
+}
+int main()
+{
+cin>>n>>m;
+}
