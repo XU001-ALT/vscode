@@ -1,0 +1,2 @@
+class SQLExecutionError(Exception):
+    pass

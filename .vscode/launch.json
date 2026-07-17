@@ -24,6 +24,14 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Python: Launch main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ],
     "version": "2.0.0"
