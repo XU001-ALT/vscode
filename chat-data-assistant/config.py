@@ -22,32 +22,34 @@ class Config:
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
     
     @classmethod
-    def validate(cls) -> list[str]:
-        """验证必要配置，返回缺失的配置项列表"""
+    def validate_db(cls) -> list[str]:
+        """验证数据库配置"""
         errors = []
-        
-        # 必填字段验证
         if not cls.DB_PASSWORD:
             errors.append("DB_PASSWORD 未设置")
-        if not cls.LLM_API_KEY:
-            errors.append("LLM_API_KEY 未设置")
-        
-        # 格式验证
         if not (1 <= cls.DB_PORT <= 65535):
             errors.append(f"DB_PORT 端口号无效: {cls.DB_PORT}")
-        
         if not cls.DB_NAME or not cls.DB_NAME.strip():
             errors.append("DB_NAME 不能为空")
-        
         if not cls.DB_HOST or not cls.DB_HOST.strip():
             errors.append("DB_HOST 不能为空")
-        
-        # LLM Provider验证
+        return errors
+    
+    @classmethod
+    def validate_llm(cls) -> list[str]:
+        """验证LLM配置"""
+        errors = []
+        if not cls.LLM_API_KEY:
+            errors.append("LLM_API_KEY 未设置")
         valid_providers = ["openai", "anthropic", "azure", "local"]
         if cls.LLM_PROVIDER.lower() not in valid_providers:
             errors.append(f"LLM_PROVIDER 无效: {cls.LLM_PROVIDER}，支持: {', '.join(valid_providers)}")
-        
         return errors
+    
+    @classmethod
+    def validate(cls) -> list[str]:
+        """验证所有配置"""
+        return cls.validate_db() + cls.validate_llm()
     
     @classmethod
     def is_valid(cls) -> bool:
