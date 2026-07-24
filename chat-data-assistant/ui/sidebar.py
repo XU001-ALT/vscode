@@ -1,5 +1,7 @@
 import streamlit as st
 from core.session_state import ensure_defaults
+from db.executor import fetch_full_schema
+from db.connection import db_manager
 
 
 def render():
@@ -16,6 +18,16 @@ def render():
 
     st.markdown("---")
     st.subheader("ORM / Schema")
+    if st.button("从数据库自动拉取 Schema"):
+        with st.spinner("正在连接数据库并拉取表结构..."):
+            try:
+                db_manager.close()
+                schema_text = fetch_full_schema()
+                st.session_state['orm_schema'] = schema_text
+                st.success(f"已拉取 Schema，共 {len(schema_text.split(chr(10)))} 行")
+            except Exception as e:
+                st.error(f"拉取失败: {e}")
+
     uploaded = st.file_uploader("上传 ORM 文件（Python / JSON / TXT）", type=["py", "json", "txt"], key="orm_uploader")
     if uploaded is not None:
         try:

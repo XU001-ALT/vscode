@@ -89,3 +89,27 @@ def get_table_schema(table_name: str) -> pd.DataFrame:
         ORDER BY ordinal_position
     """
     return execute_sql(sql)
+
+
+def fetch_full_schema() -> str:
+    """从数据库自动拉取所有表的结构，返回文本摘要"""
+    engine = get_engine()
+    lines = []
+    with engine.connect() as conn:
+        result = conn.execute(text(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' ORDER BY table_name"
+        ))
+        tables = [row[0] for row in result]
+
+        for table in tables:
+            result = conn.execute(text(
+                "SELECT column_name, data_type, is_nullable "
+                "FROM information_schema.columns "
+                f"WHERE table_name = '{table}' AND table_schema = 'public' "
+                "ORDER BY ordinal_position"
+            ))
+            cols = [f"  {row[0]} {row[1]}{' (nullable)' if row[2] == 'YES' else ''}" for row in result]
+            lines.append(f"Table {table}:\n" + "\n".join(cols))
+
+    return "\n\n".join(lines) if lines else "未找到任何表"

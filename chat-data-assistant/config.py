@@ -20,6 +20,7 @@ class Config:
     # LLM配置
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "")
     
     @classmethod
     def validate_db(cls) -> list[str]:
@@ -41,8 +42,9 @@ class Config:
         errors = []
         if not cls.LLM_API_KEY:
             errors.append("LLM_API_KEY 未设置")
-        valid_providers = ["openai", "anthropic", "azure", "local"]
-        if cls.LLM_PROVIDER.lower() not in valid_providers:
+        valid_providers = ["openai", "deepseek", "anthropic", "azure", "local"]
+        provider = cls.LLM_PROVIDER.strip().lower().replace(" ", "")
+        if provider not in valid_providers:
             errors.append(f"LLM_PROVIDER 无效: {cls.LLM_PROVIDER}，支持: {', '.join(valid_providers)}")
         return errors
     
