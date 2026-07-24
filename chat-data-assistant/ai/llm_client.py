@@ -11,9 +11,18 @@ def _normalize_response_text(text: str) -> str:
     if "```" in text:
         pieces = text.split("```")
         if len(pieces) >= 3:
-            return pieces[1].strip()
-        return pieces[-1].strip()
-    return text
+            inner = pieces[1].strip()
+        else:
+            inner = pieces[-1].strip()
+    else:
+        inner = text.strip()
+
+    known_tags = {"sql", "python", "json", "text", "markdown", "bash", "shell", "javascript", "ts", "typescript"}
+    lines = inner.split("\n", 1)
+    if lines and lines[0].strip().lower().rstrip("`") in known_tags:
+        inner = lines[1].strip() if len(lines) > 1 else ""
+
+    return inner
 
 
 def _post_openai_compatible(endpoint: str, payload: dict[str, Any]) -> dict[str, Any]:
