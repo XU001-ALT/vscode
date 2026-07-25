@@ -37,17 +37,17 @@ def render():
         role = msg.get('role', 'system')
         content = msg.get('content', '')
         if role == 'user':
-            with st.chat_message("user", avatar="？"):
+            with st.chat_message("user"):
                 st.markdown(content)
         else:
-            with st.chat_message("assistant", avatar="→"):
+            with st.chat_message("assistant"):
                 st.markdown(content)
 
     query = st.chat_input("请输入查询，例如：某个表的最大数据")
     if query:
         query = query.strip()
         if query:
-            with st.chat_message("user", avatar="？"):
+            with st.chat_message("user"):
                 st.markdown(query)
             append_message('user', query)
             _run_pipeline(query)
