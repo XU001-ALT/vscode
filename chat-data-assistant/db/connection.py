@@ -19,16 +19,28 @@ def make_engine(
     pool_size: int = 5,
     max_overflow: int = 10,
 ) -> Engine:
-    """
-    创建数据库引擎（带连接池）
-    """
-    errors = config.validate_db()
+    """创建数据库引擎（带连接池），显式参数优先，fallback 到 .env 配置"""
+    final_host = host or config.DB_HOST
+    final_port = int(port) if port else config.DB_PORT
+    final_dbname = dbname or config.DB_NAME
+    final_user = user or config.DB_USER
+    final_password = password or config.DB_PASSWORD
+
+    errors = []
+    if not final_password:
+        errors.append("DB_PASSWORD 未设置")
+    if not (1 <= final_port <= 65535):
+        errors.append(f"DB_PORT 端口号无效: {final_port}")
+    if not final_dbname or not final_dbname.strip():
+        errors.append("DB_NAME 不能为空")
+    if not final_host or not final_host.strip():
+        errors.append("DB_HOST 不能为空")
     if errors:
         raise DatabaseConfigError(f"数据库配置错误: {', '.join(errors)}")
 
     db_url = (
-        f"postgresql+psycopg2://{user or config.DB_USER}:{password or config.DB_PASSWORD}"
-        f"@{host or config.DB_HOST}:{port or config.DB_PORT}/{dbname or config.DB_NAME}"
+        f"postgresql+psycopg2://{final_user}:{final_password}"
+        f"@{final_host}:{final_port}/{final_dbname}"
     )
 
     engine = create_engine(
@@ -57,6 +69,12 @@ class DatabaseManager:
         """获取或创建引擎"""
         if self._engine is None:
             self._engine = make_engine()
+        return self._engine
+
+    def connect_with_config(self, host: str, port: int, dbname: str, user: str, password: str) -> Engine:
+        """使用指定配置关闭旧连接并创建新引擎"""
+        self.close()
+        self._engine = make_engine(host=host, port=port, dbname=dbname, user=user, password=password)
         return self._engine
 
     def close(self):

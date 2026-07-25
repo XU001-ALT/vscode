@@ -1,13 +1,16 @@
 """LLM 调用封装，支持 OpenAI、DeepSeek 和本地开发模式。"""
-import json
+import re
 from typing import Any
 
 import httpx
 from config import config
 
+_SQL_START_RE = re.compile(r"^\s*(select|with|explain|show|describe|desc)\b", re.IGNORECASE | re.MULTILINE)
+
 
 def _normalize_response_text(text: str) -> str:
     text = text.strip()
+
     if "```" in text:
         pieces = text.split("```")
         if len(pieces) >= 3:
@@ -15,14 +18,19 @@ def _normalize_response_text(text: str) -> str:
         else:
             inner = pieces[-1].strip()
     else:
-        inner = text.strip()
+        inner = text
 
-    known_tags = {"sql", "python", "json", "text", "markdown", "bash", "shell", "javascript", "ts", "typescript"}
     lines = inner.split("\n", 1)
-    if lines and lines[0].strip().lower().rstrip("`") in known_tags:
-        inner = lines[1].strip() if len(lines) > 1 else ""
+    if lines:
+        tag = lines[0].strip().lower().rstrip("`")
+        if not tag or tag.isalpha():
+            inner = lines[1].strip() if len(lines) > 1 else ""
 
-    return inner
+    m = _SQL_START_RE.search(inner)
+    if m:
+        inner = inner[m.start():]
+
+    return inner.strip()
 
 
 def _post_openai_compatible(endpoint: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -55,7 +63,7 @@ def _call_openai(prompt: str, max_tokens: int = 512, model: str = "gpt-3.5-turbo
     return _normalize_response_text(content)
 
 
-def _call_deepseek(prompt: str, max_tokens: int = 512, model: str = "deepseek-chat") -> str:
+def _call_deepseek(prompt: str, max_tokens: int = 512, model: str = "deepseek-v4-flash") -> str:
     base_url = config.LLM_BASE_URL.strip() or "https://api.deepseek.com"
     payload = {
         "model": model,
@@ -81,7 +89,7 @@ def call_llm(prompt: str, max_tokens: int = 512, model: str | None = None) -> st
     if provider == "openai":
         return _call_openai(prompt, max_tokens=max_tokens, model=model or "gpt-3.5-turbo")
     if provider == "deepseek":
-        return _call_deepseek(prompt, max_tokens=max_tokens, model=model or "deepseek-chat")
+        return _call_deepseek(prompt, max_tokens=max_tokens, model=model or "deepseek-v4-flash")
     if provider == "local":
         return _call_local(prompt, max_tokens=max_tokens)
 

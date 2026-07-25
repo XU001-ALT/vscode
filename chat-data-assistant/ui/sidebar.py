@@ -1,7 +1,17 @@
 import streamlit as st
 from core.session_state import ensure_defaults
 from db.executor import fetch_full_schema
-from db.connection import db_manager
+from db.connection import db_manager, DatabaseConfigError
+
+
+def _get_db_config() -> dict:
+    return {
+        "host": st.session_state.get('db_host', 'localhost'),
+        "port": int(st.session_state.get('db_port', 5432)),
+        "dbname": st.session_state.get('db_name', ''),
+        "user": st.session_state.get('db_user', ''),
+        "password": st.session_state.get('db_password', ''),
+    }
 
 
 def render():
@@ -14,14 +24,20 @@ def render():
     st.text_input("数据库 用户", value=st.session_state.get('db_user', 'read_only'), key="db_user")
     st.text_input("数据库 密码", type="password", value=st.session_state.get('db_password', ''), key="db_password")
     if st.button("保存数据库配置"):
-        st.success("已保存数据库配置到 session_state")
+        try:
+            cfg = _get_db_config()
+            db_manager.connect_with_config(**cfg)
+            st.success("数据库连接成功")
+        except (DatabaseConfigError, Exception) as e:
+            st.error(f"连接失败: {e}")
 
     st.markdown("---")
     st.subheader("ORM / Schema")
     if st.button("从数据库自动拉取 Schema"):
         with st.spinner("正在连接数据库并拉取表结构..."):
             try:
-                db_manager.close()
+                cfg = _get_db_config()
+                db_manager.connect_with_config(**cfg)
                 schema_text = fetch_full_schema()
                 st.session_state['orm_schema'] = schema_text
                 st.success(f"已拉取 Schema，共 {len(schema_text.split(chr(10)))} 行")
