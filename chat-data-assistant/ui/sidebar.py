@@ -2,6 +2,9 @@ import streamlit as st
 from core.session_state import ensure_defaults
 from db.executor import fetch_full_schema
 from db.connection import db_manager, DatabaseConfigError
+from schema.loader import load_from_text
+from schema.validator import validate_schema
+from schema.summarizer import summarize_schema
 
 
 def _get_db_config() -> dict:
@@ -12,6 +15,19 @@ def _get_db_config() -> dict:
         "user": st.session_state.get('db_user', ''),
         "password": st.session_state.get('db_password', ''),
     }
+
+
+def _process_schema(raw_text: str) -> bool:
+    """解析、校验、裁剪 schema，存入 session_state。返回是否成功"""
+    tables = load_from_text(raw_text)
+    ok, errors = validate_schema(tables)
+    if not ok:
+        st.error("Schema 校验失败: " + "; ".join(errors))
+        return False
+    processed = summarize_schema(tables)
+    st.session_state['orm_schema'] = processed
+    st.session_state['orm_schema_tables'] = [t.name for t in tables]
+    return True
 
 
 def render():
@@ -38,9 +54,10 @@ def render():
             try:
                 cfg = _get_db_config()
                 db_manager.connect_with_config(**cfg)
-                schema_text = fetch_full_schema()
-                st.session_state['orm_schema'] = schema_text
-                st.success(f"已拉取 Schema，共 {len(schema_text.split(chr(10)))} 行")
+                raw_text = fetch_full_schema()
+                if _process_schema(raw_text):
+                    n = len(st.session_state.get('orm_schema_tables', []))
+                    st.success(f"已拉取并处理 Schema，共 {n} 张表")
             except Exception as e:
                 st.error(f"拉取失败: {e}")
 
@@ -50,17 +67,21 @@ def render():
             content = uploaded.getvalue().decode('utf-8')
         except Exception:
             content = str(uploaded.getvalue())
-        st.session_state['orm_schema'] = content
-        st.success("已从文件加载并缓存 ORM 到 session_state['orm_schema']")
+        if _process_schema(content):
+            n = len(st.session_state.get('orm_schema_tables', []))
+            st.success(f"已加载并处理 Schema，共 {n} 张表")
 
     st.text_area("粘贴或编辑 ORM/schema（仅需一次）", value=st.session_state.get('orm_schema', ''), key="orm_input", height=200)
     if st.button("确认并缓存 ORM"):
-        st.session_state['orm_schema'] = st.session_state.get('orm_input', '')
-        st.success("ORM 已缓存到 session_state['orm_schema']")
+        raw = st.session_state.get('orm_input', '')
+        if _process_schema(raw):
+            n = len(st.session_state.get('orm_schema_tables', []))
+            st.success(f"ORM 已缓存，共 {n} 张表")
 
     st.markdown("---")
     st.subheader("状态")
-    if st.session_state.get('orm_schema'):
-        st.info("ORM 已加载到会话")
+    tables = st.session_state.get('orm_schema_tables')
+    if tables:
+        st.info(f"已加载 {len(tables)} 张表: {', '.join(tables[:10])}{'...' if len(tables) > 10 else ''}")
     else:
         st.warning("未加载 ORM：请粘贴或上传 schema 并点击确认")

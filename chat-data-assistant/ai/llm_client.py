@@ -51,7 +51,7 @@ def _post_openai_compatible(endpoint: str, payload: dict[str, Any]) -> dict[str,
         return response.json()
 
 
-def _call_openai(prompt: str, max_tokens: int = 512, model: str = "gpt-3.5-turbo") -> str:
+def _call_openai(prompt: str, max_tokens: int = 2048, model: str = "gpt-3.5-turbo") -> str:
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -63,7 +63,7 @@ def _call_openai(prompt: str, max_tokens: int = 512, model: str = "gpt-3.5-turbo
     return _normalize_response_text(content)
 
 
-def _call_deepseek(prompt: str, max_tokens: int = 512, model: str = "deepseek-v4-flash") -> str:
+def _call_deepseek(prompt: str, max_tokens: int = 2048, model: str = "deepseek-v4-flash") -> str:
     base_url = config.LLM_BASE_URL.strip() or "https://api.deepseek.com"
     payload = {
         "model": model,
@@ -76,7 +76,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 512, model: str = "deepseek-v4
     return _normalize_response_text(content)
 
 
-def _call_local(prompt: str, max_tokens: int = 512) -> str:
+def _call_local(prompt: str, max_tokens: int = 2048) -> str:
     return (
         "--LOCAL LLM 模拟输出--\n"
         "请将 LLM_PROVIDER 设置为 openai 或 deepseek，并提供有效的 LLM_API_KEY，"
@@ -84,7 +84,7 @@ def _call_local(prompt: str, max_tokens: int = 512) -> str:
     )
 
 
-def call_llm(prompt: str, max_tokens: int = 512, model: str | None = None) -> str:
+def call_llm(prompt: str, max_tokens: int = 2048, model: str | None = None) -> str:
     provider = config.LLM_PROVIDER.strip().lower().replace(" ", "")
     if provider == "openai":
         return _call_openai(prompt, max_tokens=max_tokens, model=model or "gpt-3.5-turbo")

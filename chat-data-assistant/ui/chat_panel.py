@@ -31,29 +31,24 @@ def _run_pipeline(query: str):
 
 def render():
     ensure_defaults()
-    st.subheader("查询（自然语言）")
-    cols = st.columns([3, 1])
-    with cols[0]:
-        st.text_area("请输入查询，例如：过去 6 个月每月订单数量", key="user_query", height=80)
-    with cols[1]:
-        if st.button("发送查询"):
-            query = st.session_state.get('user_query', '').strip()
-            if query:
-                append_message('user', query)
-                _run_pipeline(query)
-            else:
-                st.warning("请输入查询内容")
 
-    st.markdown("---")
-    st.subheader("会话历史")
     history = get_history()
-    if history:
-        for msg in history:
-            role = msg.get('role')
-            content = msg.get('content')
-            if role == 'user':
-                st.markdown(f"**用户**: {content}")
-            else:
-                st.markdown(f"**系统**: {content}")
-    else:
-        st.info("暂无会话记录")
+    for msg in history:
+        role = msg.get('role', 'system')
+        content = msg.get('content', '')
+        if role == 'user':
+            with st.chat_message("user", avatar="？"):
+                st.markdown(content)
+        else:
+            with st.chat_message("assistant", avatar="→"):
+                st.markdown(content)
+
+    query = st.chat_input("请输入查询，例如：某个表的最大数据")
+    if query:
+        query = query.strip()
+        if query:
+            with st.chat_message("user", avatar="？"):
+                st.markdown(query)
+            append_message('user', query)
+            _run_pipeline(query)
+            st.rerun()
