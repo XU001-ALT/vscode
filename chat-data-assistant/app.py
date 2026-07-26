@@ -5,31 +5,38 @@ st.set_page_config(page_title="氢问", page_icon=" H₂", layout="wide")
 
 st.markdown("""
 <style>
-    .stApp {
+    /* 主背景 */
+    .stApp, [data-testid="stAppViewContainer"] {
         background-color: #f0f2f6;
     }
-    .stSidebar {
+
+    /* 侧边栏背景 */
+    .stSidebar, section[data-testid="stSidebar"] {
         background-color: #e8edf3;
     }
-    header[data-testid="stHeader"] {
-        background-color: #1a365d;
+
+    /* 顶部 header */
+    header {
+        background-color: #1a365d !important;
     }
-    header[data-testid="stHeader"] * {
+    header * {
         color: white !important;
     }
+
+    /* 隐藏 deploy 按钮 */
     .stDeployButton {
         display: none;
     }
-    div[data-testid="stChatInput"] {
-        border: 2px solid #1a365d;
-        border-radius: 12px;
-        background-color: #ffffff;
+
+    /* 聊天输入框（多选择器兜底） */
+    div[data-testid="stChatInput"],
+    .stChatInput,
+    textarea[aria-label="Chat input"] {
+        border: 2px solid #1a365d !important;
+        border-radius: 12px !important;
+        background-color: #ffffff !important;
         box-shadow: 0 2px 8px rgba(26, 54, 93, 0.15);
         margin-bottom: 16px;
-    }
-    div[data-testid="stChatInput"]:focus-within {
-        border-color: #2c5282;
-        box-shadow: 0 2px 12px rgba(26, 54, 93, 0.25);
     }
 </style>
 """, unsafe_allow_html=True)
