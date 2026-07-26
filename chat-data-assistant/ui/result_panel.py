@@ -26,7 +26,14 @@ def render():
     st.markdown('<p class="section-header">图表配置</p>', unsafe_allow_html=True)
     if df is not None:
         cols = list(df.columns)
-        chart_type = st.selectbox("图表类型", ["line", "bar", "scatter", "pie"], index=0, key="chart_type")
+        chart_options = {
+            "折线图": "line",
+            "柱状图": "bar",
+            "散点图": "scatter",
+            "饼图": "pie"
+        }
+        chart_label = st.selectbox("图表类型", list(chart_options.keys()), index=0, key="chart_type")
+        chart_type = chart_options[chart_label]
         x_col = st.selectbox("X 轴", cols, key="chart_x")
         y_cols = st.multiselect("Y 轴（可多选）", cols, default=[cols[1]] if len(cols) > 1 else [cols[0]], key="chart_y")
         if st.button("渲染图表"):
