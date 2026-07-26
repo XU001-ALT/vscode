@@ -2,25 +2,36 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# 加载.env文件
+# 加载.env文件（本地开发用）
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 
+def _get(key: str, default: str = "") -> str:
+    """优先从 Streamlit secrets 读取，其次从环境变量读取"""
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+
 class Config:
-    """配置管理类，优先从环境变量读取"""
+    """配置管理类，优先从 Streamlit secrets 读取，其次从环境变量读取"""
     
     # 数据库配置
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: int = int(os.getenv("DB_PORT", "5432"))
-    DB_NAME: str = os.getenv("DB_NAME", "your_db")
-    DB_USER: str = os.getenv("DB_USER", "read_only")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    DB_HOST: str = _get("DB_HOST", "localhost")
+    DB_PORT: int = int(_get("DB_PORT", "5432"))
+    DB_NAME: str = _get("DB_NAME", "your_db")
+    DB_USER: str = _get("DB_USER", "read_only")
+    DB_PASSWORD: str = _get("DB_PASSWORD", "")
     
     # LLM配置
-    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
-    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "")
+    LLM_API_KEY: str = _get("LLM_API_KEY", "")
+    LLM_PROVIDER: str = _get("LLM_PROVIDER", "openai")
+    LLM_BASE_URL: str = _get("LLM_BASE_URL", "")
     
     @classmethod
     def validate_db(cls) -> list[str]:
