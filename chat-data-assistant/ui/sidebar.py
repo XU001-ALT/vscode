@@ -32,8 +32,8 @@ def _process_schema(raw_text: str) -> bool:
 
 def render():
     ensure_defaults()
-    st.header("配置 / ORM")
-    st.subheader("数据库连接")
+    st.markdown('<p class="sidebar-title">配置 / ORM</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sidebar-section">数据库连接</p>', unsafe_allow_html=True)
     st.text_input("Host", value=st.session_state.get('db_host', 'localhost'), key="db_host")
     st.text_input("Port", value=str(st.session_state.get('db_port', 5432)), key="db_port")
     st.text_input("数据库 名称", value=st.session_state.get('db_name', 'your_db'), key="db_name")
@@ -48,7 +48,7 @@ def render():
             st.error(f"连接失败: {e}")
 
     st.markdown("---")
-    st.subheader("ORM / Schema")
+    st.markdown('<p class="sidebar-section">ORM / Schema</p>', unsafe_allow_html=True)
     if st.button("从数据库自动拉取 Schema"):
         with st.spinner("正在连接数据库并拉取表结构..."):
             try:
@@ -79,7 +79,7 @@ def render():
             st.success(f"ORM 已缓存，共 {n} 张表")
 
     st.markdown("---")
-    st.subheader("状态")
+    st.markdown('<p class="sidebar-section">状态</p>', unsafe_allow_html=True)
     tables = st.session_state.get('orm_schema_tables')
     if tables:
         st.info(f"已加载 {len(tables)} 张表: {', '.join(tables[:10])}{'...' if len(tables) > 10 else ''}")

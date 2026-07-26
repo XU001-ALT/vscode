@@ -3,27 +3,27 @@ from viz.renderer import render_chart
 
 
 def render():
-    st.subheader("生成 SQL & 数据预览")
+    st.markdown('<p class="section-header">生成 SQL & 数据预览</p>', unsafe_allow_html=True)
     last_sql = st.session_state.get('last_sql')
     df = st.session_state.get('last_df')
 
     left, right = st.columns(2)
     with left:
-        st.markdown("**SQL 语句**")
+        st.markdown('<p style="color: #38bdf8; font-weight: 600;">SQL 语句</p>', unsafe_allow_html=True)
         if last_sql:
             st.code(last_sql, language='sql')
         else:
             st.info("暂无生成的 SQL")
 
     with right:
-        st.markdown("**数据预览**")
+        st.markdown('<p style="color: #38bdf8; font-weight: 600;">数据预览</p>', unsafe_allow_html=True)
         if df is not None:
             st.dataframe(df.head(200))
         else:
             st.info("目前没有查询结果，发送查询以生成 SQL 并执行。")
 
     st.markdown("---")
-    st.subheader("图表配置")
+    st.markdown('<p class="section-header">图表配置</p>', unsafe_allow_html=True)
     if df is not None:
         cols = list(df.columns)
         chart_type = st.selectbox("图表类型", ["line", "bar", "scatter", "pie"], index=0, key="chart_type")

@@ -38,6 +38,53 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
 
+    /* 主标题 - 渐变色 */
+    .main-title {
+        font-size: 2.5rem !important;
+        font-weight: 700 !important;
+        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Section 标题样式 */
+    .section-header {
+        color: #38bdf8 !important;
+        font-size: 1.1rem;
+        font-weight: 600;
+        padding: 8px 12px;
+        background: linear-gradient(90deg, rgba(56, 189, 248, 0.15) 0%, transparent 100%);
+        border-left: 3px solid #38bdf8;
+        border-radius: 0 8px 8px 0;
+        margin: 16px 0 12px 0;
+    }
+
+    /* 侧边栏标题 */
+    .sidebar-title {
+        color: #38bdf8 !important;
+        font-size: 1.2rem;
+        font-weight: 700;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #334155;
+        margin-bottom: 16px;
+    }
+
+    .sidebar-section {
+        color: #7dd3fc !important;
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-top: 16px;
+        margin-bottom: 8px;
+    }
+
+    /* 输入框标签 */
+    label, .stLabel, [data-testid="stWidgetLabel"] {
+        color: #94a3b8 !important;
+        font-weight: 500;
+    }
+
     /* 隐藏 deploy 按钮 */
     .stDeployButton {
         display: none;
@@ -118,10 +165,16 @@ st.markdown("""
     hr {
         border-color: #334155;
     }
+
+    /* 小标签/提示文字 */
+    .small-label {
+        color: #64748b;
+        font-size: 0.85rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("氢问")
+st.markdown('<p class="main-title">氢问 H₂</p>', unsafe_allow_html=True)
 
 with st.sidebar:
     sidebar.render()
