@@ -1,7 +1,19 @@
 import streamlit as st
 from ui import sidebar, chat_panel, result_panel
+from db.connection import db_manager
 
 st.set_page_config(page_title="氢问", page_icon=" H₂", layout="wide")
+
+# 启动时自动连接数据库
+@st.cache_resource
+def init_db():
+    try:
+        db_manager.connect()
+        return True
+    except Exception:
+        return False
+
+db_connected = init_db()
 
 st.markdown("""
 <style>
@@ -175,6 +187,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="main-title">氢问 H₂</p>', unsafe_allow_html=True)
+
+if not db_connected:
+    st.warning("数据库连接失败，请检查 .env 中的配置")
 
 with st.sidebar:
     sidebar.render()

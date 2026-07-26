@@ -32,28 +32,22 @@ def _process_schema(raw_text: str) -> bool:
 
 def render():
     ensure_defaults()
-    st.markdown('<p class="sidebar-title">配置 / ORM</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sidebar-section">数据库连接</p>', unsafe_allow_html=True)
-    st.text_input("Host", value=st.session_state.get('db_host', 'localhost'), key="db_host")
-    st.text_input("Port", value=str(st.session_state.get('db_port', 5432)), key="db_port")
-    st.text_input("数据库 名称", value=st.session_state.get('db_name', 'your_db'), key="db_name")
-    st.text_input("数据库 用户", value=st.session_state.get('db_user', 'read_only'), key="db_user")
-    st.text_input("数据库 密码", type="password", value=st.session_state.get('db_password', ''), key="db_password")
-    if st.button("保存数据库配置"):
-        try:
-            cfg = _get_db_config()
-            db_manager.connect_with_config(**cfg)
-            st.success("数据库连接成功")
-        except (DatabaseConfigError, Exception) as e:
-            st.error(f"连接失败: {e}")
+    st.markdown('<p class="sidebar-title">Schema 管理</p>', unsafe_allow_html=True)
+
+    # 数据库连接状态
+    try:
+        info = db_manager.get_info()
+        st.success(f"数据库已连接: {info['database']}")
+        st.caption(f"PostgreSQL {info['version'][:20]}...")
+    except Exception:
+        st.warning("数据库未连接，请检查 .env 配置")
 
     st.markdown("---")
-    st.markdown('<p class="sidebar-section">ORM / Schema</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sidebar-section">加载 Schema</p>', unsafe_allow_html=True)
+
     if st.button("从数据库自动拉取 Schema"):
         with st.spinner("正在连接数据库并拉取表结构..."):
             try:
-                cfg = _get_db_config()
-                db_manager.connect_with_config(**cfg)
                 raw_text = fetch_full_schema()
                 if _process_schema(raw_text):
                     n = len(st.session_state.get('orm_schema_tables', []))
@@ -84,4 +78,4 @@ def render():
     if tables:
         st.info(f"已加载 {len(tables)} 张表: {', '.join(tables[:10])}{'...' if len(tables) > 10 else ''}")
     else:
-        st.warning("未加载 ORM：请粘贴或上传 schema 并点击确认")
+        st.info("未加载 ORM：请粘贴或上传 schema 并点击确认")
