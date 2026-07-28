@@ -26,20 +26,19 @@ def render():
     st.markdown('<p class="section-header">图表配置</p>', unsafe_allow_html=True)
     if df is not None:
         cols = list(df.columns)
-        chart_options = {
-            "折线图": "line",
-            "柱状图": "bar",
-            "散点图": "scatter",
-            "饼图": "pie"
-        }
-        chart_label = st.selectbox("图表类型", list(chart_options.keys()), index=0, key="chart_type")
-        chart_type = chart_options[chart_label]
-        x_col = st.selectbox("X 轴", cols, key="chart_x")
-        y_cols = st.multiselect("Y 轴（可多选）", cols, default=[cols[1]] if len(cols) > 1 else [cols[0]], key="chart_y")
-        if st.button("渲染图表"):
-            if not x_col or not y_cols:
-                st.warning("请选择 X 轴与至少一个 Y 轴列")
-            else:
+        chart_type = st.session_state.get('chart_type', 'line')
+
+        if chart_type == 'pie':
+            name_col = st.selectbox("分类列", cols, key="pie_names")
+            value_col = st.selectbox("数值列", cols, key="pie_values")
+            if name_col and value_col:
+                render_chart(df, chart_type='pie', x=name_col, y=value_col)
+        else:
+            chart_type_label = {"line": "折线图", "bar": "柱状图", "scatter": "散点图"}.get(chart_type, "折线图")
+            st.info(f"当前图表类型：{chart_type_label}")
+            x_col = st.selectbox("X 轴", cols, key="chart_x")
+            y_cols = st.multiselect("Y 轴（可多选）", cols, default=[cols[1]] if len(cols) > 1 else [cols[0]], key="chart_y")
+            if x_col and y_cols:
                 render_chart(df, chart_type=chart_type, x=x_col, y=y_cols[0])
     else:
         st.info("要渲染图表，请先执行 SQL 并得到数据（见左侧）")
