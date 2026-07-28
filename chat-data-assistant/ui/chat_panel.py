@@ -82,6 +82,16 @@ def render():
             with st.chat_message("assistant"):
                 st.markdown(content)
 
+    st.markdown('<p class="section-header">选择图表类型</p>', unsafe_allow_html=True)
+    chart_options = {"折线图": "line", "柱状图": "bar", "散点图": "scatter", "饼图": "pie"}
+    chart_label = st.radio(
+        "图表类型",
+        list(chart_options.keys()),
+        horizontal=True,
+        key="chart_type_selector"
+    )
+    st.session_state['chart_type'] = chart_options[chart_label]
+
     # 输入框
     query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
     if query:

@@ -11,5 +11,7 @@ def ensure_defaults():
         st.session_state['last_sql'] = None
     if 'last_df' not in st.session_state:
         st.session_state['last_df'] = None
+    if 'chart_type' not in st.session_state:
+        st.session_state['chart_type'] = 'line'
     if 'chart_config' not in st.session_state:
         st.session_state['chart_config'] = {}
