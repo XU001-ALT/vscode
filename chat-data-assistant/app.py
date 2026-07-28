@@ -1,5 +1,5 @@
 import streamlit as st
-from ui import sidebar, chat_panel, result_panel
+from ui import render_sidebar, render_chat_panel, render_result_panel
 from db.connection import db_manager
 
 st.set_page_config(page_title="氢问", page_icon=" H₂", layout="wide")
@@ -192,13 +192,13 @@ if not db_connected:
     st.warning("数据库连接失败，请检查 .env 中的配置")
 
 with st.sidebar:
-    sidebar.render()
+    render_sidebar()
 
 with st.container():
-    chat_panel.render()
+    render_chat_panel()
 
 with st.container():
-    result_panel.render()
+    render_result_panel()
 
 if __name__ == '__main__':
     pass

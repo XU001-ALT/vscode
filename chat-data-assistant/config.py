@@ -32,6 +32,9 @@ class Config:
     LLM_API_KEY: str = _get("LLM_API_KEY", "")
     LLM_PROVIDER: str = _get("LLM_PROVIDER", "openai")
     LLM_BASE_URL: str = _get("LLM_BASE_URL", "")
+    LLM_MODEL: str = _get("LLM_MODEL", "")  # 空字符串表示自动选择 (openai→gpt-4o-mini, deepseek→deepseek-v4-flash)
+    LLM_TEMPERATURE: float = float(_get("LLM_TEMPERATURE", "0.2"))
+    LLM_MAX_TOKENS: int = int(_get("LLM_MAX_TOKENS", "2048"))  # SQL 生成最大 token 数
     
     @classmethod
     def validate_db(cls) -> list[str]:
