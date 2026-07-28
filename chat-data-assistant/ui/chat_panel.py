@@ -7,7 +7,10 @@ from db.executor import execute_sql_safe
 
 
 def _run_pipeline(query: str):
-    """执行完整的 Text-to-SQL → 执行 → Self-Correction 流水线。"""
+    """执行完整的 Text-to-SQL → 执行 → Self-Correction 流水线。
+
+    所有异常都在此捕获，确保不会白屏崩溃，而是以聊天消息形式展示。
+    """
     schema_summary = st.session_state.get('orm_schema', '')
     if not schema_summary.strip():
         append_message('system', "⚠️ 请先在左侧侧边栏加载 Schema（粘贴表结构或从数据库拉取）")
@@ -15,18 +18,35 @@ def _run_pipeline(query: str):
 
     history = get_history()
 
-    sql, df, error = to_sql_with_correction(
-        schema_summary=schema_summary,
-        chat_history=history,
-        user_query=query,
-        execute_fn=execute_sql_safe,
-    )
+    try:
+        sql, df, error = to_sql_with_correction(
+            schema_summary=schema_summary,
+            chat_history=history,
+            user_query=query,
+            execute_fn=execute_sql_safe,
+        )
+    except Exception as e:
+        # LLM 调用层面的异常（401、网络超时等），不是 SQL 执行失败
+        st.session_state['last_sql'] = None
+        st.session_state['last_df'] = None
+        error_detail = str(e)
+        # 对常见错误给出中文提示
+        if '401' in error_detail or 'Authorization' in error_detail or 'Unauthorized' in error_detail:
+            hint = "🔑 API Key 无效或未配置，请检查 .env 中的 LLM_API_KEY。"
+        elif 'timeout' in error_detail.lower() or 'timed out' in error_detail.lower():
+            hint = "⏱️ LLM 请求超时，请稍后重试。"
+        elif 'Connection' in error_detail or 'connect' in error_detail.lower():
+            hint = "🌐 无法连接到 LLM 服务，请检查网络和 LLM_BASE_URL。"
+        else:
+            hint = f"❌ 系统错误: {error_detail}"
+        append_message('assistant', hint)
+        return
 
     # 始终保存最后一次 SQL
     st.session_state['last_sql'] = sql
 
     if error:
-        # 执行失败：保存 SQL 到上下文便于追问调试
+        # SQL 执行/校验层面的失败（含 Self-Correction 后仍失败）
         st.session_state['last_df'] = None
         append_message('assistant', (
             f"SQL 执行失败: {error}\n\n"
@@ -36,7 +56,6 @@ def _run_pipeline(query: str):
     else:
         st.session_state['last_df'] = df
         row_count = len(df) if df is not None else 0
-        # 将成功执行的 SQL 和数据摘要注入上下文，便于多轮追问
         sql_preview = sql[:300] + "..." if len(sql) > 300 else sql
         append_message('assistant', (
             f"已返回 {row_count} 行数据\n\n"
