@@ -1,6 +1,10 @@
 import streamlit as st
 from ui import render_sidebar, render_chat_panel, render_result_panel
 from db.connection import db_manager
+from db.executor import fetch_full_schema
+from schema.loader import load_from_text
+from schema.validator import validate_schema
+from schema.summarizer import summarize_schema
 
 st.set_page_config(page_title="氢问", page_icon=" H₂", layout="wide")
 
@@ -190,6 +194,18 @@ st.markdown('<p class="main-title">氢问 H₂</p>', unsafe_allow_html=True)
 
 if not db_connected:
     st.warning("数据库连接失败，请检查 .env 中的配置")
+
+# 连接成功后自动拉取 Schema（仅首次，不覆盖手动加载）
+if db_connected and not st.session_state.get('orm_schema'):
+    try:
+        raw_text = fetch_full_schema()
+        tables = load_from_text(raw_text)
+        ok, _ = validate_schema(tables)
+        if ok:
+            st.session_state['orm_schema'] = summarize_schema(tables)
+            st.session_state['orm_schema_tables'] = [t.name for t in tables]
+    except Exception:
+        pass  # 静默失败，用户后续可通过侧边栏手动拉取
 
 with st.sidebar:
     render_sidebar()
