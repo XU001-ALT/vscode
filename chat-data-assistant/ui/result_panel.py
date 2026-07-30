@@ -39,6 +39,6 @@ def render():
             x_col = st.selectbox("X 轴", cols, key="chart_x")
             y_cols = st.multiselect("Y 轴（可多选）", cols, default=[cols[1]] if len(cols) > 1 else [cols[0]], key="chart_y")
             if x_col and y_cols:
-                render_chart(df, chart_type=chart_type, x=x_col, y=y_cols[0])
+                render_chart(df, chart_type=chart_type, x=x_col, y=y_cols)
     else:
         st.info("要渲染图表，请先执行 SQL 并得到数据（见左侧）")
