@@ -1,7 +1,7 @@
 import streamlit as st
 from core.session_state import ensure_defaults
 from db.executor import fetch_full_schema
-from db.connection import db_manager, DatabaseConfigError
+from db.connection import db_manager
 from schema.loader import load_from_text
 from schema.validator import validate_schema
 from schema.summarizer import summarize_schema
@@ -45,15 +45,34 @@ def render():
     st.markdown("---")
     st.markdown('<p class="sidebar-section">加载 Schema</p>', unsafe_allow_html=True)
 
-    if st.button("从数据库自动拉取 Schema"):
-        with st.spinner("正在连接数据库并拉取表结构..."):
-            try:
-                raw_text = fetch_full_schema()
-                if _process_schema(raw_text):
-                    n = len(st.session_state.get('orm_schema_tables', []))
-                    st.success(f"已拉取并处理 Schema，共 {n} 张表")
-            except Exception as e:
-                st.error(f"拉取失败: {e}")
+    schema_loaded = bool(st.session_state.get('orm_schema_tables'))
+    auto_failed = st.session_state.get('orm_auto_failed', False)
+
+    if schema_loaded:
+        tables = st.session_state.get('orm_schema_tables', [])
+        st.success(f"Schema 已加载，共 {len(tables)} 张表")
+    elif auto_failed:
+        st.error("自动拉取 Schema 失败")
+        if st.button("重试自动拉取"):
+            with st.spinner("正在拉取表结构..."):
+                try:
+                    raw_text = fetch_full_schema()
+                    if _process_schema(raw_text):
+                        n = len(st.session_state.get('orm_schema_tables', []))
+                        st.success(f"已拉取并处理 Schema，共 {n} 张表")
+                        st.session_state.pop('orm_auto_failed', None)
+                except Exception as e:
+                    st.error(f"拉取失败: {e}")
+    else:
+        if st.button("从数据库拉取 Schema"):
+            with st.spinner("正在拉取表结构..."):
+                try:
+                    raw_text = fetch_full_schema()
+                    if _process_schema(raw_text):
+                        n = len(st.session_state.get('orm_schema_tables', []))
+                        st.success(f"已拉取并处理 Schema，共 {n} 张表")
+                except Exception as e:
+                    st.error(f"拉取失败: {e}")
 
     uploaded = st.file_uploader("上传 ORM 文件（Python / JSON / TXT）", type=["py", "json", "txt"], key="orm_uploader")
     if uploaded is not None:

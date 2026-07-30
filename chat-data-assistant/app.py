@@ -205,7 +205,7 @@ if db_connected and not st.session_state.get('orm_schema'):
             st.session_state['orm_schema'] = summarize_schema(tables)
             st.session_state['orm_schema_tables'] = [t.name for t in tables]
     except Exception:
-        pass  # 静默失败，用户后续可通过侧边栏手动拉取
+        st.session_state['orm_auto_failed'] = True
 
 with st.sidebar:
     render_sidebar()
