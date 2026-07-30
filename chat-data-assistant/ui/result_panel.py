@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from viz.renderer import render_chart
 
@@ -29,6 +30,15 @@ def render():
         chart_type = st.session_state.get('chart_type', 'line')
 
         if chart_type == 'pie':
+            # 当结果只有 2 列时，自动识别：文本列→分类，数值列→占比
+            if len(cols) == 2:
+                numeric = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
+                text = [c for c in cols if not pd.api.types.is_numeric_dtype(df[c])]
+                if len(numeric) == 1 and len(text) == 1:
+                    name_col, value_col = text[0], numeric[0]
+                    st.caption(f"自动识别：分类={name_col}，数值={value_col}")
+                    render_chart(df, chart_type='pie', x=name_col, y=value_col)
+                    return
             name_col = st.selectbox("分类列", cols, key="pie_names")
             value_col = st.selectbox("数值列", cols, key="pie_values")
             if name_col and value_col:
