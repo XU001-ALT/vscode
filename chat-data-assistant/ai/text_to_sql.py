@@ -9,17 +9,33 @@ Text-to-SQL 核心模块：将自然语言转为可执行 SQL，并支持 Self-C
         → 成功 → 返回 DataFrame
         → 失败 → 构建纠错 prompt → LLM 修正 → 重试 (最多 2 次)
 """
-from .llm_client import call_llm, call_llm_raw
+from .llm_client import call_llm
 from .prompts import build_system_prompt, build_prompt, build_correction_prompt
 from .sql_guard import validate_sql
 
 # 最大纠错重试次数
 MAX_CORRECTION_RETRIES = 2
+# 纠错时允许模型输出更长（含原因分析后再给 SQL，避免被截断）
+CORRECTION_MAX_TOKENS = 4096
 
 
 def _extract_sql_text(text: str) -> str:
     """从 LLM 回复中提取 SQL（call_llm 已做归一化，这里做最终 strip）。"""
     return text.strip()
+
+
+def _no_valid_sql_message(err_msg: str, attempt: int = 0) -> str:
+    """LLM 未生成合法 SQL 时的友好提示（区别于真正的安全拦截）"""
+    reason = "模型未返回以 SELECT/WITH 开头的 SQL" if "只读" in err_msg else err_msg
+    if attempt:
+        return (
+            f"LLM 纠错 {attempt} 次后仍未生成合法 SQL（{reason}）。"
+            f"请换个问法，或确认问题在已加载的表结构范围内。"
+        )
+    return (
+        f"LLM 重试后仍未生成合法 SQL（{reason}）。"
+        f"请换个问法，或确认问题在已加载的表结构范围内。"
+    )
 
 
 def to_sql(
@@ -82,18 +98,18 @@ def to_sql_with_correction(
 
     valid, err_msg = validate_sql(sql)
     if not valid:
-        # 安全校验失败，尝试让 LLM 修正
+        # LLM 没直接给出合法 SQL（可能只回了文字说明），让 LLM 修正一次
         prompt = build_correction_prompt(
             user_query=user_query,
             failed_sql=sql or "(空)",
-            error_message=f"安全校验: {err_msg}",
+            error_message=f"未生成合法 SQL: {err_msg}",
             schema_summary=schema_summary,
         )
-        raw_sql = call_llm_raw(prompt, system=system)
+        raw_sql = call_llm(prompt, system=system, max_tokens=CORRECTION_MAX_TOKENS)
         sql = _extract_sql_text(raw_sql)
         valid2, err_msg2 = validate_sql(sql)
         if not valid2:
-            return sql, None, f"SQL 安全校验失败（已重试）: {err_msg2}"
+            return sql, None, _no_valid_sql_message(err_msg2)
 
     # 执行 SQL
     df, exec_err = execute_fn(sql)
@@ -110,12 +126,12 @@ def to_sql_with_correction(
             error_message=current_error,
             schema_summary=schema_summary,
         )
-        raw_corrected = call_llm_raw(correction_prompt, system=system)
+        raw_corrected = call_llm(correction_prompt, system=system, max_tokens=CORRECTION_MAX_TOKENS)
         corrected_sql = _extract_sql_text(raw_corrected)
 
         valid, err_msg = validate_sql(corrected_sql)
         if not valid:
-            return corrected_sql, None, f"纠错后 SQL 校验失败 (第{attempt + 1}次): {err_msg}"
+            return corrected_sql, None, _no_valid_sql_message(err_msg, attempt + 1)
 
         df, exec_err = execute_fn(corrected_sql)
         if exec_err is None:
