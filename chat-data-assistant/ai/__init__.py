@@ -7,6 +7,7 @@ from ai.prompts import (
 )
 from ai.sql_guard import is_readonly, validate_sql
 from ai.text_to_sql import to_sql, to_sql_with_correction, MAX_CORRECTION_RETRIES
+from ai.chart_recommendation import recommend_chart
 
 __all__ = [
     "call_llm",
@@ -20,4 +21,5 @@ __all__ = [
     "to_sql",
     "to_sql_with_correction",
     "MAX_CORRECTION_RETRIES",
+    "recommend_chart",
 ]
