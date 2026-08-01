@@ -1,6 +1,7 @@
 import pandas as pd
 from sqlalchemy import text
-from db.connection import get_engine, get_connection
+from sqlalchemy.exc import OperationalError
+from db.connection import get_engine, get_connection, db_manager
 from db.exceptions import SQLExecutionError, SecurityError
 import re
 
@@ -31,6 +32,15 @@ def check_sql_safety(sql: str) -> None:
         )
 
 
+def _run_query(sql: str, max_rows: int) -> pd.DataFrame:
+    """执行一次查询并截断行数（内部函数）"""
+    engine = get_engine()
+    df = pd.read_sql(text(sql), engine)
+    if len(df) > max_rows:
+        df = df.head(max_rows)
+    return df
+
+
 def execute_sql(
     sql: str,
     timeout: int = 30,
@@ -38,6 +48,9 @@ def execute_sql(
 ) -> pd.DataFrame:
     """
     执行SQL查询，返回DataFrame
+
+    连接可能因服务端空闲超时（约 90s）被断开，这里在首次执行遇到连接层
+    错误时强制重建连接并重试一次，避免用户看到偶发的"中途断连"。
 
     Args:
         sql: SQL语句
@@ -47,13 +60,16 @@ def execute_sql(
     check_sql_safety(sql)
 
     try:
-        engine = get_engine()
-        df = pd.read_sql(text(sql), engine)
-        if len(df) > max_rows:
-            df = df.head(max_rows)
-        return df
+        return _run_query(sql, max_rows)
     except SecurityError:
         raise
+    except OperationalError:
+        # 连接层错误（空闲断连等）：重建连接后重试一次
+        db_manager.close()
+        try:
+            return _run_query(sql, max_rows)
+        except Exception as e:
+            raise SQLExecutionError(f"SQL执行失败: {e}")
     except Exception as e:
         raise SQLExecutionError(f"SQL执行失败: {e}")
 

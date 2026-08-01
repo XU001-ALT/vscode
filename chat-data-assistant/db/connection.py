@@ -18,6 +18,7 @@ def make_engine(
     password: str = None,
     pool_size: int = 5,
     max_overflow: int = 10,
+    pool_recycle: int = 60,
 ) -> Engine:
     """创建数据库引擎（带连接池），显式参数优先，fallback 到 .env 配置"""
     final_host = host or config.DB_HOST
@@ -49,7 +50,7 @@ def make_engine(
         pool_size=pool_size,
         max_overflow=max_overflow,
         pool_pre_ping=True,
-        pool_recycle=3600,
+        pool_recycle=pool_recycle,
     )
     return engine
 
