@@ -6,7 +6,7 @@ from schema.loader import load_from_text
 from schema.validator import validate_schema
 from schema.summarizer import summarize_schema
 
-st.set_page_config(page_title="氢问", page_icon=" H₂", layout="wide")
+st.set_page_config(page_title="hydrogen-chat", page_icon=" H₂", layout="wide")
 
 # 启动时自动连接数据库
 @st.cache_resource
@@ -21,22 +21,34 @@ db_connected = init_db()
 
 st.markdown("""
 <style>
-    /* 主背景 - 深色 */
+    :root {
+        --bg-color: #0e1424;
+        --card-bg: rgba(20, 30, 60, 0.6);
+        --border-color: #1d4ed8;
+        --text-color: #e6ebff;
+        --highlight-color: #fbbf24;
+        --nav-bg: #0b1120;
+        --accent-blue: #60a5fa;
+    }
+
+    /* 主背景 - 深海蓝 */
     .stApp, [data-testid="stAppViewContainer"] {
-        background-color: #0f172a;
+        background-color: var(--bg-color);
     }
 
     /* 侧边栏背景 */
     .stSidebar, section[data-testid="stSidebar"] {
-        background-color: #1e293b;
+        background-color: var(--nav-bg);
     }
     .stSidebar [data-testid="stMarkdown"] {
-        color: #e2e8f0;
+        color: var(--text-color);
     }
 
     /* 顶部 header */
     header {
-        background-color: #1e293b !important;
+        background-color: var(--nav-bg) !important;
+        border-bottom: 1px solid #1e293b;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
     header * {
         color: white !important;
@@ -44,51 +56,64 @@ st.markdown("""
 
     /* 全局文字颜色 */
     .stMarkdown, .stMarkdown p, .stMarkdown li, label, .stLabel {
-        color: #e2e8f0 !important;
+        color: var(--text-color) !important;
     }
 
     /* 标题和子标题 */
     h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] h1,
     [data-testid="stMarkdownContainer"] h2,
     [data-testid="stMarkdownContainer"] h3 {
-        color: #f1f5f9 !important;
+        color: #fff !important;
     }
 
-    /* 主标题 - 渐变色 */
+    /* 主标题 - 卡片化 + 科技角标 */
     .main-title {
-        font-size: 2.5rem !important;
+        font-size: 2rem !important;
         font-weight: 700 !important;
-        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #fff;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 14px 20px;
+        position: relative;
+        letter-spacing: 1px;
         margin-bottom: 0.5rem;
     }
+    .main-title::before, .main-title::after {
+        content: '';
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--accent-blue);
+    }
+    .main-title::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+    .main-title::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
 
-    /* Section 标题样式 */
+    /* Section 标题 - 卡片头风格 */
     .section-header {
-        color: #38bdf8 !important;
-        font-size: 1.1rem;
+        color: #fff !important;
+        font-size: 1rem;
         font-weight: 600;
-        padding: 8px 12px;
-        background: linear-gradient(90deg, rgba(56, 189, 248, 0.15) 0%, transparent 100%);
-        border-left: 3px solid #38bdf8;
-        border-radius: 0 8px 8px 0;
+        text-align: center;
+        padding: 10px 15px;
+        background: rgba(30, 58, 138, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
         margin: 16px 0 12px 0;
     }
 
     /* 侧边栏标题 */
     .sidebar-title {
-        color: #38bdf8 !important;
+        color: #fff !important;
         font-size: 1.2rem;
         font-weight: 700;
         padding-bottom: 8px;
-        border-bottom: 2px solid #334155;
+        border-bottom: 2px solid rgba(29, 78, 216, 0.4);
         margin-bottom: 16px;
     }
 
     .sidebar-section {
-        color: #7dd3fc !important;
+        color: var(--accent-blue) !important;
         font-size: 0.95rem;
         font-weight: 600;
         margin-top: 16px;
@@ -110,44 +135,46 @@ st.markdown("""
     div[data-testid="stChatInput"],
     .stChatInput,
     textarea[aria-label="Chat input"] {
-        border: 2px solid #334155 !important;
-        border-radius: 12px !important;
-        background-color: #1e293b !important;
-        color: #f1f5f9 !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        border: 2px solid var(--border-color) !important;
+        border-radius: 4px !important;
+        background-color: var(--card-bg) !important;
+        color: var(--text-color) !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         margin-bottom: 16px;
     }
     div[data-testid="stChatInput"]:focus-within {
-        border-color: #38bdf8 !important;
-        box-shadow: 0 2px 12px rgba(56, 189, 248, 0.3);
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 2px 12px rgba(96, 165, 250, 0.3);
     }
 
-    /* 聊天气泡 - 用户消息 */
+    /* 聊天气泡 - 用户消息（卡片化） */
     [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
-        background-color: #1e3a5f;
-        border-radius: 12px;
+        background-color: rgba(30, 58, 138, 0.35);
+        border: 1px solid rgba(29, 78, 216, 0.4);
+        border-radius: 4px;
         padding: 12px;
         margin: 8px 0;
     }
 
-    /* 聊天气泡 - 助手消息 */
+    /* 聊天气泡 - 助手消息（卡片化） */
     [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
-        background-color: #1e293b;
-        border-radius: 12px;
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
         padding: 12px;
         margin: 8px 0;
     }
 
     /* 按钮样式 */
     .stButton > button {
-        background-color: #38bdf8;
-        color: #0f172a;
+        background-color: var(--accent-blue);
+        color: #0b1120;
         border: none;
-        border-radius: 8px;
+        border-radius: 4px;
         font-weight: 600;
     }
     .stButton > button:hover {
-        background-color: #7dd3fc;
+        background-color: #93c5fd;
     }
 
     /* 输入框和选择框 */
@@ -155,31 +182,31 @@ st.markdown("""
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div,
     .stMultiSelect > div > div {
-        background-color: #1e293b !important;
-        color: #f1f5f9 !important;
-        border-color: #334155 !important;
+        background-color: var(--card-bg) !important;
+        color: var(--text-color) !important;
+        border-color: var(--border-color) !important;
     }
 
     /* 信息/警告/错误提示框 */
     .stAlert {
-        background-color: #1e293b;
-        border-color: #334155;
-        color: #e2e8f0;
+        background-color: var(--card-bg);
+        border-color: var(--border-color);
+        color: var(--text-color);
     }
 
     /* 代码块 */
     .stCode {
-        background-color: #1e293b;
+        background-color: var(--card-bg);
     }
 
     /* 数据表格 */
     .stDataFrame {
-        background-color: #1e293b;
+        background-color: var(--card-bg);
     }
 
     /* 分割线 */
     hr {
-        border-color: #334155;
+        border-color: rgba(29, 78, 216, 0.3);
     }
 
     /* 小标签/提示文字 */
@@ -187,10 +214,17 @@ st.markdown("""
         color: #64748b;
         font-size: 0.85rem;
     }
+
+    /* 数字高亮 - 琥珀金 */
+    .highlight {
+        color: var(--highlight-color);
+        font-weight: bold;
+        text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="main-title">氢问 H₂</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-title">hydrogen-chat</p>', unsafe_allow_html=True)
 
 if not db_connected:
     st.warning("数据库连接失败，请检查 .env 中的配置")

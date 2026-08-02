@@ -15,14 +15,14 @@ def render():
 
     left, right = st.columns(2)
     with left:
-        st.markdown('<p style="color: #38bdf8; font-weight: 600;">SQL 语句</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color: #60a5fa; font-weight: 600;">SQL 语句</p>', unsafe_allow_html=True)
         if last_sql:
             st.code(last_sql, language='sql')
         else:
             st.info("暂无生成的 SQL")
 
     with right:
-        st.markdown('<p style="color: #38bdf8; font-weight: 600;">数据预览</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color: #60a5fa; font-weight: 600;">数据预览</p>', unsafe_allow_html=True)
         if df is not None:
             st.dataframe(df.head(200))
         else:
