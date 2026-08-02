@@ -32,6 +32,12 @@ def render():
     st.markdown('<p class="section-header">图表配置</p>', unsafe_allow_html=True)
     if df is not None:
         cols = list(df.columns)
+        # 结果集列变化时，清空图表控件状态，让默认值重新生效（防止切换查询后 Y 轴多选残留为空）
+        if st.session_state.get('_chart_cols_key') != tuple(cols):
+            for _k in ('chart_x', 'chart_y', 'chart_type_selector', 'use_auto_chart',
+                       'pie_names', 'pie_values', 'chart_type'):
+                st.session_state.pop(_k, None)
+            st.session_state['_chart_cols_key'] = tuple(cols)
         rec = st.session_state.get('chart_recommendation') or {}
 
         # AI 自动推荐：基于用户问题推断图表类型与坐标轴（如"各材料占比"→饼图）
@@ -78,9 +84,20 @@ def render():
             chart_type_label = {"line": "折线图", "bar": "柱状图", "scatter": "散点图"}.get(chart_type, "折线图")
             st.info(f"当前图表类型：{chart_type_label}")
             x_col = st.selectbox("X 轴", cols, key="chart_x")
-            y_cols = st.multiselect("Y 轴（可多选）", cols, default=[cols[1]] if len(cols) > 1 else [cols[0]], key="chart_y")
-            x_col = _valid_columns(df, [x_col])[0] if x_col else None
+            numeric_cols = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
+            y_options = [c for c in numeric_cols if c != x_col]
+            if not y_options:
+                st.info("当前结果集中没有可用的数值列，请调整查询")
+                return
+            if 'chart_y' not in st.session_state:
+                st.session_state['chart_y'] = [y_options[0]]
+            else:
+                prev_y = st.session_state['chart_y']
+                if any(c not in y_options for c in prev_y):
+                    st.session_state['chart_y'] = [y_options[0]]
+            y_cols = st.multiselect("Y 轴（可多选，仅数值列）", y_options, key="chart_y")
             y_cols = _valid_columns(df, y_cols)
+            y_cols = [c for c in y_cols if c != x_col]
             if x_col and y_cols:
                 render_chart(df, chart_type=chart_type, x=x_col, y=y_cols)
     else:
