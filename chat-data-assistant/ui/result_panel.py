@@ -39,6 +39,11 @@ def render():
                 st.session_state.pop(_k, None)
             st.session_state['_chart_cols_key'] = tuple(cols)
         rec = st.session_state.get('chart_recommendation') or {}
+        # 每次新查询会生成新的 AI 推荐对象：识别到新对象时重置"使用 AI 推荐"为默认勾选，
+        # 仅控件交互导致的 rerun（推荐对象未变）保留用户选择
+        if st.session_state.get('_last_rec') is not rec:
+            st.session_state.pop('use_auto_chart', None)
+            st.session_state['_last_rec'] = rec
 
         # AI 自动推荐：基于用户问题推断图表类型与坐标轴（如"各材料占比"→饼图）
         rec_x = _valid_columns(df, [rec.get('x_col')]) if rec.get('x_col') else []
