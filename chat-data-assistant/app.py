@@ -147,8 +147,14 @@ st.markdown("""
         box-shadow: 0 2px 12px rgba(96, 165, 250, 0.3);
     }
 
+    /* 隐藏聊天气泡头像（红色人脸图标） */
+    [data-testid="stChatMessageAvatarUser"],
+    [data-testid="stChatMessageAvatarAssistant"] {
+        display: none;
+    }
+
     /* 聊天气泡 - 用户消息（卡片化） */
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+    [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
         background-color: rgba(30, 58, 138, 0.35);
         border: 1px solid rgba(29, 78, 216, 0.4);
         border-radius: 4px;
@@ -157,7 +163,7 @@ st.markdown("""
     }
 
     /* 聊天气泡 - 助手消息（卡片化） */
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+    [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
         background-color: var(--card-bg);
         border: 1px solid var(--border-color);
         border-radius: 4px;
