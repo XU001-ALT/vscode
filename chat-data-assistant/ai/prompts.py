@@ -86,6 +86,14 @@ ORDER BY avg_hydrogen_release DESC;
 """
 
 # ============================================================
+#  图表自动推荐
+# ============================================================
+
+# 饼图分类数上限（超过则切片过多，视觉不可读）
+PIE_MAX_CATEGORIES = 15
+
+
+# ============================================================
 #  Self-Correction Prompt（SQL 执行失败时使用）
 # ============================================================
 
@@ -195,6 +203,7 @@ def build_chart_recommendation_prompt(
     sql: str,
     columns: list[str],
     row_count: int,
+    column_info: str = "",
 ) -> str:
     """构建图表推荐 prompt（用于 LLM 自动建议图表类型和坐标轴）。
 
@@ -203,6 +212,7 @@ def build_chart_recommendation_prompt(
         sql: 已执行的 SQL
         columns: 结果集的列名列表
         row_count: 结果行数
+        column_info: 列信息摘要（列名 + 类型 + 唯一值数），帮助 LLM 判断坐标轴是否合理
 
     Returns:
         图表推荐 prompt
@@ -218,8 +228,9 @@ def build_chart_recommendation_prompt(
 ```
 
 ## 结果集信息
-- 列名: {', '.join(columns)}
 - 行数: {row_count}
+- 列信息（列名, 类型, 唯一值数）:
+{column_info or ', '.join(columns)}
 
 ## 要求
 请用以下 JSON 格式输出（不要其他内容）:
@@ -229,9 +240,17 @@ def build_chart_recommendation_prompt(
  "y_col": "列名",
  "reason": "推荐理由（中文，一句话）"}}
 ```
-图表类型选择指南:
-- line: 趋势/时间序列数据
-- bar: 分类对比数据
-- scatter: 双数值列的相关性分析
-- pie: 占比/比例数据（类别不超过 10 个）
+
+## 图表类型选择指南
+- line: 时间/序号趋势（X 为时间或有序类别，Y 为数值）
+- bar: 分类对比（X 为类别，Y 为数值）
+- scatter: 双数值列相关性（X、Y 都应为数值）
+- pie: 占比/比例数据（X 为类别，Y 为数值）
+
+## 硬性约束
+1. x_col 和 y_col 必须是上面列信息中真实存在的列名
+2. 除 pie 外，y_col 必须是"数值"类型列
+3. pie 的 x_col 唯一值数不能超过 {PIE_MAX_CATEGORIES} 个
+4. x_col 与 y_col 不能相同
 """
+
