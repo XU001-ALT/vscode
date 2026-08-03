@@ -51,6 +51,7 @@ def make_engine(
         max_overflow=max_overflow,
         pool_pre_ping=True,
         pool_recycle=pool_recycle,
+        connect_args={"connect_timeout": 15},
     )
     return engine
 

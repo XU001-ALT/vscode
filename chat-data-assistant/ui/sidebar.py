@@ -43,15 +43,18 @@ def _render_connected():
 
 @st.fragment(run_every=3)
 def _render_connecting():
-    """连接中：后台线程持续重试，这里每 3 秒自动刷新一次状态，成功后自动切换"""
+    """连接中：后台线程持续重试，这里每 3 秒自动刷新一次状态。
+
+    连上后触发一次整页重跑，让 app.py 把自动拉取的 schema 同步进会话，
+    并切换回静态的"已连接"状态（不再轮询）。
+    """
     state = bootstrap.get_state()
     if state.get("done"):
-        if not st.session_state.get('orm_schema') and state.get('schema'):
-            st.session_state['orm_schema'] = state['schema']
-            st.session_state['orm_schema_tables'] = state['tables']
-        _render_connected()
+        st.rerun(scope="app")
     else:
         st.info("正在连接数据库，系统自动重试中…")
+        if state.get("last_error"):
+            st.caption(f"最近一次失败：{state['last_error'][:120]}")
 
 
 def _render_db_status():
