@@ -43,12 +43,28 @@ def _is_numeric_col(df: pd.DataFrame, col: str) -> bool:
     return pd.api.types.is_numeric_dtype(df[col])
 
 
+def _is_scalar_col(df: pd.DataFrame, col: str) -> bool:
+    """列值是否全部为标量（不含 jsonb/dict/list，避免渲染成字符串）。"""
+    try:
+        return not bool(df[col].map(lambda v: isinstance(v, (dict, list))).any())
+    except Exception:
+        return True
+
+
+def _safe_nunique(df: pd.DataFrame, col: str) -> int:
+    """统计列的唯一值数，兼容 jsonb/dict/list 等不可哈希值（转字符串后统计）。"""
+    try:
+        return int(df[col].nunique(dropna=True))
+    except TypeError:
+        return int(df[col].astype(str).nunique(dropna=True))
+
+
 def _column_info(df: pd.DataFrame) -> str:
     """生成列信息摘要：`列名 (数值/文本, N 个唯一值)`，帮助 LLM 判断坐标轴是否合理。"""
     parts = []
     for col in df.columns:
         kind = "数值" if _is_numeric_col(df, col) else "文本"
-        nunique = df[col].nunique(dropna=True)
+        nunique = _safe_nunique(df, col)
         parts.append(f"- {col} ({kind}, {nunique} 个唯一值)")
     return "\n".join(parts)
 
@@ -77,12 +93,15 @@ def _valid_rec(df: pd.DataFrame, rec: dict) -> bool:
         return False
     if x not in df.columns or y not in df.columns:
         return False
+    # 坐标轴不能用 jsonb/dict/list 列（渲染成字符串无意义）
+    if not _is_scalar_col(df, x) or not _is_scalar_col(df, y):
+        return False
 
     if chart_type == "pie":
         # 饼图：数值列作为占比，且分类数不能过多
         if not _is_numeric_col(df, y):
             return False
-        if df[x].nunique(dropna=True) > PIE_MAX_CATEGORIES:
+        if _safe_nunique(df, x) > PIE_MAX_CATEGORIES:
             return False
     else:
         # 折线/柱状/散点：Y 轴必须是数值列，否则 plotly 无法渲染
@@ -97,7 +116,8 @@ def _fallback_recommendation(df: pd.DataFrame) -> dict | None:
         return None
 
     numeric = [c for c in df.columns if _is_numeric_col(df, c)]
-    non_numeric = [c for c in df.columns if not _is_numeric_col(df, c)]
+    non_numeric = [c for c in df.columns
+                   if not _is_numeric_col(df, c) and _is_scalar_col(df, c)]
 
     if not numeric:
         return None
@@ -105,7 +125,7 @@ def _fallback_recommendation(df: pd.DataFrame) -> dict | None:
     if non_numeric:
         x = non_numeric[0]
         y = numeric[0]
-        if df[x].nunique(dropna=True) <= PIE_MAX_CATEGORIES and len(numeric) == 1:
+        if _safe_nunique(df, x) <= PIE_MAX_CATEGORIES and len(numeric) == 1:
             return {"chart_type": "pie", "x_col": x, "y_col": y,
                     "reason": "自动选择：单一分类列 + 单一数值列，用饼图展示占比。"}
         return {"chart_type": "bar", "x_col": x, "y_col": y,
