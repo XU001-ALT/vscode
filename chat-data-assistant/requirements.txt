@@ -1,8 +1,8 @@
-streamlit
-pandas
-sqlalchemy
-psycopg2-binary
-plotly
-openai
-python-dotenv
-httpx
+streamlit==1.60.0
+pandas==3.0.5
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.12
+plotly==6.9.0
+openai==2.48.0
+python-dotenv==1.2.2
+httpx==0.28.1
