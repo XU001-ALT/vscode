@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from viz.renderer import render_chart
+from viz.renderer import render_chart, auto_pie_columns
 
 
 def _valid_columns(df: pd.DataFrame, cols: list) -> list:
@@ -70,21 +70,21 @@ def render():
         st.session_state['chart_type'] = chart_type
 
         if chart_type == 'pie':
-            # 当结果只有 2 列时，自动识别：文本列→分类，数值列→占比
-            if len(cols) == 2:
-                numeric = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
-                text = [c for c in cols if not pd.api.types.is_numeric_dtype(df[c])]
-                if len(numeric) == 1 and len(text) == 1:
-                    name_col, value_col = text[0], numeric[0]
-                    st.caption(f"自动识别：分类={name_col}，数值={value_col}")
-                    render_chart(df, chart_type='pie', x=name_col, y=value_col)
-                    return
+            auto = auto_pie_columns(df)
+            if auto:
+                name_col, value_col = auto
+                st.caption(f"自动识别：分类={name_col}，占比={value_col}")
+                render_chart(df, chart_type='pie', x=name_col, y=value_col)
+                return
+            # 手动兜底：数值列选项剔除已选分类列，二者互斥，避免出现重复列
             name_col = st.selectbox("分类列", cols, key="pie_names")
-            value_col = st.selectbox("数值列", cols, key="pie_values")
-            if name_col and value_col:
-                name_col, value_col = _valid_columns(df, [name_col, value_col])
-                if len([c for c in [name_col, value_col] if c]) == 2:
-                    render_chart(df, chart_type='pie', x=name_col, y=value_col)
+            numeric_cols = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
+            value_options = [c for c in numeric_cols if c != name_col]
+            if not value_options:
+                st.info("当前结果集中没有可用的数值列作为占比，请调整查询")
+                return
+            value_col = st.selectbox("数值列", value_options, key="pie_values")
+            render_chart(df, chart_type='pie', x=name_col, y=value_col)
         else:
             chart_type_label = {"line": "折线图", "bar": "柱状图", "scatter": "散点图"}.get(chart_type, "折线图")
             st.info(f"当前图表类型：{chart_type_label}")
