@@ -6,6 +6,7 @@ from db.connection import db_manager
 from schema.loader import load_from_text
 from schema.validator import validate_schema
 from schema.summarizer import summarize_schema
+from schema.descriptions import load_descriptions
 
 
 def _get_db_config() -> dict:
@@ -70,6 +71,21 @@ def render():
     st.markdown('<p class="sidebar-title">Schema 管理</p>', unsafe_allow_html=True)
 
     _render_db_status()
+
+    st.markdown("---")
+    st.markdown('<p class="sidebar-section">数据使用说明</p>', unsafe_allow_html=True)
+    tables = st.session_state.get('orm_schema_tables', [])
+    if tables:
+        with st.expander("各表数据含义（点击展开）", expanded=False):
+            desc = load_descriptions()
+            for t in tables:
+                d = desc.get(t, "")
+                if d:
+                    st.markdown(f"**{t}** — {d}")
+                else:
+                    st.markdown(f"**{t}**")
+    else:
+        st.caption("加载 Schema 后可查看各表对应的数据含义")
 
     st.markdown("---")
     st.markdown('<p class="sidebar-section">加载 Schema</p>', unsafe_allow_html=True)
