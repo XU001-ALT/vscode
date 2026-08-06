@@ -14,6 +14,7 @@ class Column:
 class Table:
     name: str
     columns: list[Column] = field(default_factory=list)
+    description: str = ""
 
 
 # ------------------------------------------------------------
@@ -222,9 +223,12 @@ def schema_to_text(tables: list[Table]) -> str:
     """将结构化 Table 列表转回文本格式"""
     lines = []
     for t in tables:
+        header = f"Table {t.name}:"
+        if t.description:
+            header += f" {t.description}"
         col_lines = []
         for c in t.columns:
             suffix = " (nullable)" if c.nullable else ""
             col_lines.append(f"  {c.name} {c.dtype}{suffix}")
-        lines.append(f"Table {t.name}:\n" + "\n".join(col_lines))
+        lines.append(header + "\n" + "\n".join(col_lines))
     return "\n\n".join(lines)

@@ -1,4 +1,5 @@
 from schema.loader import Table
+from schema.descriptions import apply_descriptions
 
 
 def _estimate_tokens(text: str) -> int:
@@ -7,22 +8,28 @@ def _estimate_tokens(text: str) -> int:
 
 
 def _format_full(table: Table) -> str:
-    """完整格式：Table xxx:\n  col type"""
+    """完整格式：Table xxx: 描述\n  col type"""
+    header = f"Table {table.name}:"
+    if table.description:
+        header += f" {table.description}"
     lines = []
     for c in table.columns:
         suffix = " (nullable)" if c.nullable else ""
         lines.append(f"  {c.name} {c.dtype}{suffix}")
-    return f"Table {table.name}:\n" + "\n".join(lines)
+    return header + "\n" + "\n".join(lines)
 
 
 def _format_compact(table: Table) -> str:
-    """紧凑格式：Table xxx: col1, col2, col3"""
+    """紧凑格式：Table xxx (描述): col1, col2, col3"""
     col_names = ", ".join(c.name for c in table.columns)
-    return f"Table {table.name}: {col_names}"
+    label = f"Table {table.name}"
+    if table.description:
+        label += f" ({table.description})"
+    return f"{label}: {col_names}"
 
 
 def summarize_schema(tables: list[Table], max_tokens: int = 2000) -> str:
-    """根据 token 限制裁剪 schema。
+    """根据 token 限制裁剪 schema，并注入本地表描述（数据字典）。
 
     策略：
     - 如果总 token 在限制内，返回完整格式
@@ -30,6 +37,8 @@ def summarize_schema(tables: list[Table], max_tokens: int = 2000) -> str:
     """
     if not tables:
         return ""
+
+    apply_descriptions(tables)
 
     full_text = "\n\n".join(_format_full(t) for t in tables)
     if _estimate_tokens(full_text) <= max_tokens:
