@@ -1,6 +1,6 @@
 import streamlit as st
 from ui import render_sidebar, render_chat_panel, render_result_panel
-from core import bootstrap, clear_session
+from core import bootstrap
 
 st.set_page_config(page_title="hydrogen-chat", page_icon=" H₂", layout="wide")
 
@@ -66,6 +66,7 @@ st.markdown("""
         position: relative;
         letter-spacing: 1px;
         margin-bottom: 0.5rem;
+        text-align: center;
     }
     .main-title::before, .main-title::after {
         content: '';
@@ -171,6 +172,13 @@ st.markdown("""
         background-color: #93c5fd;
     }
 
+    /* 查询框旁「清空会话」按钮：单行紧凑，避免窄列内换行 */
+    .st-key-clear_session_btn button {
+        white-space: nowrap;
+        font-size: 0.85rem;
+        padding: 0 8px;
+    }
+
     /* 输入框和选择框 */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
@@ -218,16 +226,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 顶部标题栏：左侧标题，右侧操作按钮
-top_cols = st.columns([4, 1])
-with top_cols[0]:
-    st.markdown('<p class="main-title">hydrogen-chat</p>', unsafe_allow_html=True)
-with top_cols[1]:
-    st.write("")
-    st.write("")
-    if st.button("清空会话", use_container_width=True, key="clear_session_btn"):
-        clear_session()
-        st.rerun()
+# 顶部标题：居中展示；「清空会话」按钮已移至查询框旁（见 chat_panel）
+st.markdown('<p class="main-title">hydrogen-chat</p>', unsafe_allow_html=True)
 
 # 后台连接成功后，把自动拉取的 Schema 同步进会话（不覆盖手动加载）
 if not st.session_state.get('orm_schema'):

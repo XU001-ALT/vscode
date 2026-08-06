@@ -1,6 +1,6 @@
 """聊天面板：消息渲染、用户输入管道（含 Self-Correction 和多轮上下文）。"""
 import streamlit as st
-from core.session_state import ensure_defaults
+from core.session_state import ensure_defaults, clear_session
 from core.chat_history import append_message, get_history
 from ai.text_to_sql import to_sql_with_correction
 from db.executor import execute_sql_safe
@@ -87,8 +87,14 @@ def render():
     """渲染聊天面板：输入框固定在顶部，对话呈现在其下方，避免消息过多把查询口顶到下面。"""
     ensure_defaults()
 
-    # 输入框（顶部，始终可见）
-    query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
+    # 输入框（顶部，始终可见），右侧并排「清空会话」按钮
+    query_col, clear_col = st.columns([6, 1], vertical_alignment="center")
+    with query_col:
+        query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
+    with clear_col:
+        if st.button("清空会话", use_container_width=True, key="clear_session_btn"):
+            clear_session()
+            st.rerun()
     if query:
         _submit_query(query)
 
