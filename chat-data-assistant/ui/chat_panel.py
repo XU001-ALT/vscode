@@ -80,10 +80,15 @@ def _submit_query(query: str):
 
 
 def render():
-    """渲染聊天面板。"""
+    """渲染聊天面板：输入框固定在顶部，对话呈现在其下方，避免消息过多把查询口顶到下面。"""
     ensure_defaults()
 
-    # 渲染历史消息
+    # 输入框（顶部，始终可见）
+    query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
+    if query:
+        _submit_query(query)
+
+    # 对话历史（输入框下方，按时间顺序排列）
     history = get_history()
     for msg in history:
         role = msg.get('role', 'system')
@@ -97,8 +102,3 @@ def render():
         else:
             with st.chat_message("assistant"):
                 st.markdown(content)
-
-    # 输入框
-    query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
-    if query:
-        _submit_query(query)
