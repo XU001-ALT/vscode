@@ -5,13 +5,6 @@ from core.chat_history import append_message, get_history
 from ai.text_to_sql import to_sql_with_correction
 from db.executor import execute_sql_safe
 
-# 冷启动示例问题（点击直接运行）
-EXAMPLES = [
-    "查询所有实验数据中温度大于500的记录",
-    "统计每种材料的平均氢释放量",
-    "查看最近 10 条实验记录",
-]
-
 
 def _run_pipeline(query: str):
     """执行完整的 Text-to-SQL → 执行 → Self-Correction 流水线。
@@ -104,13 +97,6 @@ def render():
         else:
             with st.chat_message("assistant"):
                 st.markdown(content)
-
-    # 冷启动：无历史时展示示例问题，降低用户首次提问门槛
-    if not history:
-        st.markdown('<p class="section-header">示例查询（点击直接运行）</p>', unsafe_allow_html=True)
-        for ex in EXAMPLES:
-            if st.button(ex, use_container_width=True, key=f"ex_{ex}"):
-                _submit_query(ex)
 
     # 输入框
     query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
