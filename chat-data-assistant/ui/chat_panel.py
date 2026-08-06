@@ -62,7 +62,11 @@ def _run_pipeline(query: str):
         # 自动推荐图表配置（基于用户问题 + 结果集），失败则回退手动模式
         try:
             from ai.chart_recommendation import recommend_chart
-            st.session_state['chart_recommendation'] = recommend_chart(df, query, sql)
+            rec = recommend_chart(df, query, sql)
+            st.session_state['chart_recommendation'] = rec
+            # 每次新查询生成新的 AI 推荐时递增代次标记，result_panel 据此重置「使用 AI 推荐」勾选
+            if rec:
+                st.session_state['_rec_gen'] = st.session_state.get('_rec_gen', 0) + 1
         except Exception:
             st.session_state['chart_recommendation'] = None
 

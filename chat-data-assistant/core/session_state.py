@@ -28,7 +28,8 @@ def clear_session():
     st.session_state['last_df'] = None
     st.session_state['chart_recommendation'] = None
     st.session_state['result_tabs'] = '数据预览'
-    st.session_state['_last_rec'] = None
     st.session_state['_chart_cols_key'] = None
+    st.session_state['_rec_gen'] = None
+    st.session_state['_seen_rec_gen'] = None
     for k in _CHART_WIDGET_KEYS:
         st.session_state.pop(k, None)
