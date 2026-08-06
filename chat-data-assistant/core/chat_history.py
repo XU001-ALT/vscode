@@ -2,10 +2,18 @@
 import streamlit as st
 
 
-def append_message(role, content):
+def append_message(role, content, **meta):
+    """追加一条消息到会话历史。meta 用于携带不展示但需保留的上下文（如上一轮 SQL）。"""
     if 'messages' not in st.session_state:
         st.session_state['messages'] = []
-    st.session_state['messages'].append({"role": role, "content": content})
+    msg = {"role": role, "content": content}
+    msg.update(meta)
+    st.session_state['messages'].append(msg)
+
+
+def clear_history():
+    """清空会话消息。"""
+    st.session_state['messages'] = []
 
 
 def get_history(max_messages: int | None = None):

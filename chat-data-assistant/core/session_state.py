@@ -13,5 +13,22 @@ def ensure_defaults():
         st.session_state['last_df'] = None
     if 'chart_type' not in st.session_state:
         st.session_state['chart_type'] = 'line'
-    if 'chart_config' not in st.session_state:
-        st.session_state['chart_config'] = {}
+
+
+_CHART_WIDGET_KEYS = (
+    'chart_x', 'chart_y', 'chart_type_selector', 'use_auto_chart',
+    'pie_names', 'pie_values', 'chart_type',
+)
+
+
+def clear_session():
+    """重置会话：清空聊天记录、查询结果、图表控件与 Tab 状态。"""
+    st.session_state['messages'] = []
+    st.session_state['last_sql'] = None
+    st.session_state['last_df'] = None
+    st.session_state['chart_recommendation'] = None
+    st.session_state['result_tabs'] = '数据预览'
+    st.session_state['_last_rec'] = None
+    st.session_state['_chart_cols_key'] = None
+    for k in _CHART_WIDGET_KEYS:
+        st.session_state.pop(k, None)

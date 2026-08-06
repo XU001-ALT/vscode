@@ -163,7 +163,11 @@ def build_prompt(
         for msg in chat_history[-14:]:  # 最多保留最近 14 条消息
             role_label = "用户" if msg.get("role") == "user" else "助手"
             content = msg.get("content", "")
-            history_lines.append(f"{role_label}: {content}")
+            line = f"{role_label}: {content}"
+            sql = msg.get("sql")
+            if sql:
+                line += f"\n[上一次执行的 SQL]\n```sql\n{sql}\n```"
+            history_lines.append(line)
         if history_lines:
             parts.append(f"## 对话历史\n" + "\n".join(history_lines))
 

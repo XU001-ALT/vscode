@@ -1,6 +1,6 @@
 import streamlit as st
 from ui import render_sidebar, render_chat_panel, render_result_panel
-from core import bootstrap
+from core import bootstrap, clear_session
 
 st.set_page_config(page_title="hydrogen-chat", page_icon=" H₂", layout="wide")
 
@@ -218,7 +218,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="main-title">hydrogen-chat</p>', unsafe_allow_html=True)
+# 顶部标题栏：左侧标题，右侧操作按钮
+top_cols = st.columns([4, 1])
+with top_cols[0]:
+    st.markdown('<p class="main-title">hydrogen-chat</p>', unsafe_allow_html=True)
+with top_cols[1]:
+    st.write("")
+    st.write("")
+    if st.button("清空会话", use_container_width=True, key="clear_session_btn"):
+        clear_session()
+        st.rerun()
 
 # 后台连接成功后，把自动拉取的 Schema 同步进会话（不覆盖手动加载）
 if not st.session_state.get('orm_schema'):
@@ -230,10 +239,12 @@ if not st.session_state.get('orm_schema'):
 with st.sidebar:
     render_sidebar()
 
-with st.container():
+# 左右分栏：聊天区在左，结果区（数据 + 图表）在右，结果始终可见
+chat_col, result_col = st.columns([2, 3], gap="large")
+with chat_col:
     render_chat_panel()
 
-with st.container():
+with result_col:
     render_result_panel()
 
 if __name__ == '__main__':
