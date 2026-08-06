@@ -172,11 +172,12 @@ st.markdown("""
         background-color: #93c5fd;
     }
 
-    /* 查询框旁「清空会话」按钮：单行紧凑，避免窄列内换行 */
+    /* 查询框旁「清空会话」按钮：窄列内拆两行（清空/会话），避免文字被截断 */
     .st-key-clear_session_btn button {
-        white-space: nowrap;
         font-size: 0.85rem;
-        padding: 0 8px;
+        padding: 2px 6px;
+        line-height: 1.3;
+        white-space: normal;
     }
 
     /* 输入框和选择框 */
