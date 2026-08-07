@@ -206,17 +206,29 @@ def render():
         placeholder="留空自动选择（如 deepseek-v4-flash / gpt-4o-mini）",
     )
 
-    # ── 状态提示 ──
-    if not key_is_stored:
-        env_key = config.LLM_API_KEY
-        if env_key:
-            from core.secrets import mask_key
-            st.caption(f"当前使用 .env 配置: {mask_key(env_key)}")
-        else:
-            st.warning("未配置 API Key，请在侧边栏填写或检查 .env 文件")
-    else:
+    # ── 动态状态栏 ──
+    call_status = st.session_state.get('_llm_call_status')
+    call_model = st.session_state.get('_llm_call_model', '')
+    call_error = st.session_state.get('_llm_call_error', '')
+
+    if not key_is_stored and not config.LLM_API_KEY:
+        # 情况1: 完全没有配置任何 API Key
+        st.warning("未配置 API Key，请填写 API Key 或检查 .env 文件")
+    elif call_status == 'success':
+        # 情况2: 调用成功
+        model_display = call_model or st.session_state.get('llm_model', '') or '默认模型'
+        st.success(f"✅ 调用成功 — {model_display}")
+    elif call_status == 'error':
+        # 情况3: 调用失败
+        error_brief = call_error[:50] + ('...' if len(call_error) > 50 else '')
+        st.error(f"❌ 调用失败 — {error_brief}")
+    elif key_is_stored:
+        # 情况4: 已配置自定义 Key，但尚未首次调用
         model_display = st.session_state.get('llm_model', '') or '默认模型'
-        st.caption(f"✅ 已启用自定义 API: {model_display}")
+        st.info(f"已配置自定义模型 {model_display}，等待首次调用")
+    else:
+        # 情况5: 使用 .env 默认配置，尚未调用
+        st.info("当前使用默认模型")
 
     st.markdown("---")
     st.markdown('<p class="sidebar-section">数据使用说明</p>', unsafe_allow_html=True)

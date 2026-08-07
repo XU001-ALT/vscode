@@ -23,6 +23,14 @@ def ensure_defaults():
     if 'llm_model' not in st.session_state:
         st.session_state['llm_model'] = ''
 
+    # API 调用状态追踪（供 sidebar 动态状态栏使用）
+    if '_llm_call_status' not in st.session_state:
+        st.session_state['_llm_call_status'] = None   # None | 'success' | 'error'
+    if '_llm_call_model' not in st.session_state:
+        st.session_state['_llm_call_model'] = ''       # 上次成功调用的模型名
+    if '_llm_call_error' not in st.session_state:
+        st.session_state['_llm_call_error'] = ''        # 上次调用的错误信息（简短）
+
 
 _CHART_WIDGET_KEYS = (
     'chart_x', 'chart_y', 'chart_type_selector', 'use_auto_chart',
@@ -32,6 +40,14 @@ _CHART_WIDGET_KEYS = (
 _API_INPUT_KEYS = (
     'llm_api_key_input',   # 密码输入框的值（敏感，清除后不留痕迹）
 )
+
+
+def set_llm_call_result(success: bool, model: str = "", error: str = ""):
+    """记录最近一次 LLM 调用结果，供 sidebar 动态状态栏使用。"""
+    st = __import__('streamlit')
+    st.session_state['_llm_call_status'] = 'success' if success else 'error'
+    st.session_state['_llm_call_model'] = model
+    st.session_state['_llm_call_error'] = error[:120] if error else ''
 
 
 def clear_session():
@@ -49,6 +65,10 @@ def clear_session():
     st.session_state['_chart_cols_key'] = None
     st.session_state['_rec_gen'] = None
     st.session_state['_seen_rec_gen'] = None
+    # 重置 API 调用状态
+    st.session_state['_llm_call_status'] = None
+    st.session_state['_llm_call_model'] = ''
+    st.session_state['_llm_call_error'] = ''
     for k in _CHART_WIDGET_KEYS:
         st.session_state.pop(k, None)
     # 清除密码输入框明文残留（密钥本身在服务端私有存储中，不受影响）

@@ -1,9 +1,25 @@
 """聊天面板：消息渲染、用户输入管道（含 Self-Correction 和多轮上下文）。"""
 import streamlit as st
-from core.session_state import ensure_defaults, clear_session
+from core.session_state import ensure_defaults, clear_session, set_llm_call_result
 from core.chat_history import append_message, get_history
 from ai.text_to_sql import to_sql_with_correction
 from db.executor import execute_sql_safe
+
+
+def _get_effective_model_name() -> str:
+    """获取当前生效的模型名称（用于状态展示）。"""
+    try:
+        from core.secrets import get_effective_model
+        model = get_effective_model()
+        if model:
+            return model
+    except Exception:
+        pass
+    try:
+        from config import config
+        return config.LLM_MODEL or "默认模型"
+    except Exception:
+        return "默认模型"
 
 
 def _run_pipeline(query: str):
@@ -18,6 +34,7 @@ def _run_pipeline(query: str):
         return
 
     history = get_history()
+    model_name = _get_effective_model_name()
 
     try:
         sql, df, error = to_sql_with_correction(
@@ -39,6 +56,9 @@ def _run_pipeline(query: str):
         except ImportError:
             pass
 
+        # 记录调用失败
+        set_llm_call_result(success=False, model=model_name, error=error_detail[:80])
+
         # 对常见错误给出中文提示
         if '401' in error_detail or 'Authorization' in error_detail or 'Unauthorized' in error_detail:
             hint = "🔑 API Key 无效或未配置，请检查侧边栏或 .env 中的 API Key。"
@@ -50,6 +70,9 @@ def _run_pipeline(query: str):
             hint = f"❌ 系统错误: {error_detail}"
         append_message('assistant', hint)
         return
+
+    # LLM 调用成功（SQL 生成正常）
+    set_llm_call_result(success=True, model=model_name)
 
     # 始终保存最后一次 SQL
     st.session_state['last_sql'] = sql
