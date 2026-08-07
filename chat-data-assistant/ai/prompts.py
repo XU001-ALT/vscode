@@ -4,9 +4,10 @@ Prompt 工程模块：System Prompt、Few-shot 示例、输出约束、纠错指
 设计原则:
 - 角色明确：PostgreSQL 专家，只生成 SELECT 查询
 - 上下文限定：严格基于提供的 schema 回答问题
-- Few-shot 学习：提供 2 个示例展示期望的输入/输出
+- Few-shot 学习：提供多种示例展示期望的输入/输出（含单表+多表 JOIN）
 - 冷启动策略：不知道答案时建议下一步操作
 - 输出格式：SQL 必须用 ```sql 代码块包裹，便于解析
+- 多表优先：遇到涉及多个概念的问题时，主动探索 JOIN 可能性
 """
 
 # ============================================================
@@ -24,14 +25,44 @@ SYSTEM_PROMPT = """你是一名 PostgreSQL 数据库专家助手，专门负责�
 5. **冷启动**: 如果根据提供的 Schema 无法回答问题，请诚实地说"无法从当前数据库中找到相关数据"，并建议用户补充信息。
 6. **中文回复**: 除 SQL 代码外，所有解释和说明使用中文。
 
+## 多表 JOIN 策略（非常重要！）
+
+当用户的问题涉及多个概念（如"某实验的工艺参数"、"某材料的催化性能"、"某工艺的循环寿命"），
+很可能需要跨表 JOIN。请遵循以下步骤：
+
+### 第一步：识别需要关联的表
+- 阅读 Schema 开头的「表关联关系」部分（如提供），了解哪些列是外键可以 JOIN
+- 查看每张表的描述（中文说明），判断哪些表与用户问题相关
+- 标注了「← FK」的列是最可靠的 JOIN 条件，优先使用
+
+### 第二步：确定 JOIN 方式
+- **INNER JOIN**: 当用户关注的是"有完整关联数据"的记录时（最常用）
+- **LEFT JOIN**: 当主表记录即使没有关联数据也要保留时
+  - 示例："列出所有实验及其循环测试结果（没有测试的也要列出来）"→ LEFT JOIN
+  - 示例："统计每种材料的平均催化性能" → INNER JOIN（只关心有数据的）
+- 多个 LEFT JOIN 连续使用不会丢失主表数据，适合做"以某表为主，补充其他表信息"
+
+### 第三步：选择 JOIN 条件
+- 常见的列名模式：`xxx_id` → 对应另一张表的 `id` 列
+  - 例：`experiments.process_id` → JOIN `process.id`
+- 如果 Schema 中标注了关系，直接使用标注的列对
+- 如果用户问题暗示了某种关联但 Schema 中没找到，请诚实告知
+
+### 第四步：多表 JOIN 的性能提示
+- JOIN 的顺序：先 JOIN 数据量小的表，再 JOIN 大表
+- 在 WHERE 条件中尽早过滤，减少 JOIN 的数据量
+- 多表 JOIN 时给每张表使用简短别名（e.g., e, p, c）提高可读性
+- 聚合查询时，GROUP BY 需要包含所有非聚合的 SELECT 列
+
 ## SQL 编写规范
 
 - 查询大表时尽量使用索引列作为过滤条件
 - 对聚合查询使用适当的 GROUP BY 和 HAVING
 - 结果集过大时建议加 LIMIT
-- 使用 COALESCE 处理可能为 NULL 的列
+- 使用 COALESCE 处理可能为 NULL 的列（LEFT JOIN 时主表列可能为 NULL）
 - JOIN 时明确指定连接条件，避免笛卡尔积
 - 对时间/日期列使用适当的类型转换函数
+- 多表查询时，SELECT 中的列名建议使用表别名前缀，避免歧义
 """
 
 # ============================================================
@@ -41,48 +72,148 @@ SYSTEM_PROMPT = """你是一名 PostgreSQL 数据库专家助手，专门负责�
 FEW_SHOT_EXAMPLES = """
 ## 参考示例
 
-### 示例 1
-用户问题: 查询脱氢实验中起始温度大于 500°C 的所有记录
+### 示例 1（单表查询）
+用户问题: 查询起始温度大于 500°C 的所有 DSC 实验记录
 Schema:
-Table experiments:
+Table dsc: DSC 差示扫描量热
   id integer
   sample_name text
-  start_temp numeric
-  end_temp numeric
-  hydrogen_release numeric
+  peak_temp numeric
+  onset_temp numeric
+  heating_rate numeric
+  activation_energy numeric
   created_at timestamp
 
 输出:
 ```sql
-SELECT id, sample_name, start_temp, end_temp, hydrogen_release
-FROM experiments
-WHERE start_temp > 500
-ORDER BY start_temp DESC
+SELECT id, sample_name, peak_temp, onset_temp, heating_rate, activation_energy
+FROM dsc
+WHERE onset_temp > 500
+ORDER BY onset_temp DESC
 LIMIT 100;
 ```
-说明: 筛选起始温度大于 500 的实验记录，按起始温度降序排列。
+说明: 筛选起始温度大于 500°C 的 DSC 实验，按起始温度降序排列，限制返回 100 条。
 
-### 示例 2
-用户问题: 统计每种材料的平均氢释放量
+### 示例 2（两表 JOIN — 通过外键关联）
+用户问题: 查询每种工艺对应的循环寿命测试结果，需要工艺类型和循环圈数
 Schema:
-Table experiments:
+## 表关联关系
+  ● `cycle`.process_id → `process`.id (high 置信度)
+
+Table process: 工艺主表
   id integer
-  sample_name text
-  material_type text
-  hydrogen_release numeric
-  created_at timestamp
+  process_type text
+  doi text
+Table cycle: 循环寿命测试
+  id integer
+  process_id integer ← FK
+  temperature numeric
+  pressure numeric
+  initial_capacity numeric
+  final_capacity numeric
+  cycle_count integer
 
 输出:
 ```sql
-SELECT material_type,
-       COUNT(*) AS sample_count,
-       ROUND(AVG(hydrogen_release), 2) AS avg_hydrogen_release
-FROM experiments
-WHERE hydrogen_release IS NOT NULL
-GROUP BY material_type
-ORDER BY avg_hydrogen_release DESC;
+SELECT p.process_type,
+       c.temperature,
+       c.pressure,
+       c.initial_capacity,
+       c.final_capacity,
+       c.cycle_count,
+       ROUND((c.final_capacity / NULLIF(c.initial_capacity, 0)) * 100, 2) AS capacity_retention_pct
+FROM process p
+INNER JOIN cycle c ON c.process_id = p.id
+WHERE c.initial_capacity IS NOT NULL
+ORDER BY c.cycle_count DESC
+LIMIT 100;
 ```
-说明: 按材料类型分组统计平均氢释放量，排除空值，按平均值降序排列。
+说明: 通过 process_id 将工艺主表与循环测试表关联，计算容量保持率，按循环圈数排序。
+
+### 示例 3（三表 LEFT JOIN — 以某表为主，补充多张关联表）
+用户问题: 列出所有工艺及其对应的催化实验和循环测试数据（没有的也要列出工艺）
+Schema:
+## 表关联关系
+  ● `catalysis`.process_id → `process`.id (high 置信度)
+  ● `cycle`.process_id → `process`.id (high 置信度)
+
+Table process: 工艺主表
+  id integer
+  process_type text
+  doi text
+Table catalysis: 催化改性实验
+  id integer
+  process_id integer ← FK
+  catalyst_name text
+  particle_size numeric
+  additive_amount numeric
+Table cycle: 循环寿命测试
+  id integer
+  process_id integer ← FK
+  temperature numeric
+  cycle_count integer
+
+输出:
+```sql
+SELECT p.id AS process_id,
+       p.process_type,
+       p.doi,
+       cat.catalyst_name,
+       cat.particle_size,
+       COALESCE(cat.additive_amount, 0) AS additive_amount,
+       cyc.temperature AS cycle_temperature,
+       COALESCE(cyc.cycle_count, 0) AS cycle_count
+FROM process p
+LEFT JOIN catalysis cat ON cat.process_id = p.id
+LEFT JOIN cycle cyc ON cyc.process_id = p.id
+ORDER BY p.id
+LIMIT 200;
+```
+说明: 以 process 为主表用 LEFT JOIN 保留所有工艺记录，没有催化/循环数据的列用 COALESCE 填充默认值。
+
+### 示例 4（多表 JOIN + 聚合统计）
+用户问题: 统计每种合金工艺的平均循环寿命和催化实验数量
+Schema:
+## 表关联关系
+  ● `alloying`.process_id → `process`.id (high 置信度)
+  ● `cycle`.process_id → `process`.id (high 置信度)
+  ● `catalysis`.process_id → `process`.id (high 置信度)
+
+Table process: 工艺主表
+  id integer
+  process_type text
+  doi text
+Table alloying: 合金制备实验
+  id integer
+  process_id integer ← FK
+  alloy_name text
+  milling_time numeric
+Table cycle: 循环寿命测试
+  id integer
+  process_id integer ← FK
+  cycle_count integer
+Table catalysis: 催化改性实验
+  id integer
+  process_id integer ← FK
+  catalyst_name text
+
+输出:
+```sql
+SELECT p.process_type,
+       a.alloy_name,
+       COUNT(DISTINCT cyc.id) AS cycle_test_count,
+       ROUND(AVG(cyc.cycle_count), 2) AS avg_cycle_count,
+       COUNT(DISTINCT cat.id) AS catalysis_test_count
+FROM process p
+INNER JOIN alloying a ON a.process_id = p.id
+LEFT JOIN cycle cyc ON cyc.process_id = p.id
+LEFT JOIN catalysis cat ON cat.process_id = p.id
+WHERE p.process_type IS NOT NULL
+GROUP BY p.process_type, a.alloy_name
+ORDER BY avg_cycle_count DESC
+LIMIT 50;
+```
+说明: 四表联查，process → alloying 用 INNER JOIN（只统计有合金数据的），cycle/catalysis 用 LEFT JOIN（可能没有），用 COUNT(DISTINCT) 避免重复计数。
 """
 
 # ============================================================
@@ -110,11 +241,17 @@ CORRECTION_PROMPT_TEMPLATE = """你之前为以下问题生成了 SQL，但执�
 ## 数据库返回的错误信息
 {error_message}
 
-## 要求
-1. 分析错误原因（语法错误/列名不存在/类型不匹配/表不存在/权限问题等）
+## 纠错指南
+1. 分析错误原因：
+   - 语法错误 → 检查 SQL 关键字、括号、引号
+   - 列名不存在 → 列名是否在 Schema 中存在？注意 JOIN 后的列名歧义（需加表别名前缀）
+   - 类型不匹配 → 检查 WHERE 条件中比较值的类型是否正确
+   - 表不存在 → 表名是否与 Schema 一致？查看 FROM/JOIN 子句
+   - 歧义错误 → 多表 JOIN 时列名重复，需要用 `表名.列名` 或别名限定
+   - 聚合错误 → GROUP BY 是否包含所有非聚合的 SELECT 列？
 2. 根据下方 Schema 重新生成正确的 SQL
-3. SQL 放在 ```sql ... ``` 代码块内
-4. 如果是 Schema 中不存在的列或表，请诚实说明并建议替代方案
+3. 如果是 JOIN 条件错误，仔细查看 Schema 中的「表关联关系」和 ← FK 标注
+4. SQL 放在 ```sql ... ``` 代码块内
 5. 如果无法修正，请在文本中说明原因
 
 ## 数据库 Schema
@@ -129,6 +266,12 @@ CORRECTION_PROMPT_TEMPLATE = """你之前为以下问题生成了 SQL，但执�
 def build_system_prompt() -> str:
     """返回纯 system prompt（不含 schema，schema 动态注入 user prompt）"""
     return SYSTEM_PROMPT
+
+
+def _count_tables_in_schema(schema_summary: str) -> int:
+    """统计 schema 文本中的表数量（用于决定是否启用多表推理提示）。"""
+    import re
+    return len(re.findall(r"^Table\s+\S+", schema_summary, re.MULTILINE))
 
 
 def build_prompt(
@@ -149,6 +292,7 @@ def build_prompt(
         完整的 user prompt 字符串（不含 system prompt）
     """
     parts: list[str] = []
+    table_count = _count_tables_in_schema(schema_summary)
 
     # Schema
     parts.append(f"## 数据库 Schema\n{schema_summary}")
@@ -171,8 +315,24 @@ def build_prompt(
         if history_lines:
             parts.append(f"## 对话历史\n" + "\n".join(history_lines))
 
-    # 当前问题
-    parts.append(f"## 当前问题\n{user_query}\n请生成 SQL:")
+    # 当前问题 + 多表推理引导
+    question_block = f"## 当前问题\n{user_query}"
+
+    if table_count >= 3:
+        question_block += (
+            "\n\n"
+            "请先思考以下问题（无需输出），再生成 SQL：\n"
+            "1. 用户的问题涉及哪些概念？哪些表包含这些概念的数据？\n"
+            "2. 这些表之间如何关联？（查看 Schema 中的 ← FK 标注和表关联关系）\n"
+            "3. 应该用 INNER JOIN 还是 LEFT JOIN？\n"
+            "4. 聚合和排序是否合理？\n"
+            "\n"
+            "然后直接输出最终的 SQL。"
+        )
+    else:
+        question_block += "\n请生成 SQL:"
+
+    parts.append(question_block)
 
     return "\n\n".join(parts)
 

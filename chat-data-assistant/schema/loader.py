@@ -232,3 +232,124 @@ def schema_to_text(tables: list[Table]) -> str:
             col_lines.append(f"  {c.name} {c.dtype}{suffix}")
         lines.append(header + "\n" + "\n".join(col_lines))
     return "\n\n".join(lines)
+
+
+# ------------------------------------------------------------
+#  外键 / 表关系推断
+# ------------------------------------------------------------
+
+# 常见外键列名模式（不以 _id 结尾但实际是关联键的）
+_KNOWN_FK_COLUMNS: set[str] = {
+    "process_id", "sample_id", "material_id", "experiment_id",
+    "article_id", "method_id", "catalyst_id", "alloy_id",
+}
+
+# 这些列名大概率不是外键（即使以 _id 结尾）
+_NON_FK_ID_COLUMNS: set[str] = {
+    "id", "uuid", "guid",
+}
+
+
+def infer_relationships(tables: list[Table]) -> list[dict]:
+    """根据列名模式推断表之间的潜在关联关系。
+
+    规则：
+    1. 任何名为 `xxx_id` 的列（且 xxx 恰好匹配某张表名），视为指向该表的外键
+    2. 任何表有 `id` 列，表示可被其他表的 `xxx_id` 引用
+    3. 使用 _KNOWN_FK_COLUMNS 补充命名不标准的关联列
+    4. 排除 _NON_FK_ID_COLUMNS 中的通用标识列
+
+    Returns:
+        [{"from_table": "experiments", "from_col": "process_id",
+          "to_table": "process", "to_col": "id", "confidence": "high"}, ...]
+    """
+    if not tables:
+        return []
+
+    table_names = {t.name.lower() for t in tables}
+    columns_by_table: dict[str, dict[str, "Column"]] = {}
+    for t in tables:
+        columns_by_table[t.name] = {c.name.lower(): c for c in t.columns}
+
+    relationships: list[dict] = []
+    seen = set()  # 去重 (from_table, from_col)
+
+    for table in tables:
+        for col in table.columns:
+            col_lower = col.name.lower()
+
+            # 跳过非外键列
+            if col_lower in _NON_FK_ID_COLUMNS:
+                continue
+
+            # 检查是否为已知外键列名
+            is_fk = col_lower.endswith("_id") or col_lower in _KNOWN_FK_COLUMNS
+            if not is_fk:
+                continue
+
+            # 推断引用的目标表
+            if col_lower.endswith("_id"):
+                target_name = col_lower[:-3]  # 去掉 _id 后缀
+            else:
+                target_name = col_lower
+
+            # 尝试匹配：直接匹配、单复数匹配、前缀匹配
+            candidates = [
+                target_name,
+                target_name + "s",
+                target_name.rstrip("s"),
+                target_name + "es",
+            ]
+
+            matched_table = None
+            for cand in candidates:
+                if cand in table_names:
+                    matched_table = cand
+                    break
+
+            if matched_table is None or matched_table == table.name.lower():
+                continue
+
+            # 确定目标表的 id 列名
+            target_cols = columns_by_table.get(matched_table, {})
+            to_col = "id" if "id" in target_cols else next(iter(target_cols), "id")
+
+            key = (table.name, col.name)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            confidence = "high" if col_lower in _KNOWN_FK_COLUMNS or col_lower.endswith("_id") else "medium"
+
+            relationships.append({
+                "from_table": table.name,
+                "from_col": col.name,
+                "to_table": matched_table,
+                "to_col": to_col,
+                "confidence": confidence,
+            })
+
+    return relationships
+
+
+def format_relationships_text(relationships: list[dict]) -> str:
+    """将推断的关系列表格式化为可注入 prompt 的文本。
+
+    Returns:
+        格式化后的关系描述文本，无关系时返回空字符串。
+    """
+    if not relationships:
+        return ""
+
+    lines = ["## 表关联关系（根据列名推断，供 JOIN 参考）"]
+    lines.append("以下关联关系是根据外键列名模式自动推断的，SQL 中 JOIN 时请优先使用：\n")
+
+    for r in relationships:
+        conf_label = "●" if r["confidence"] == "high" else "○"
+        lines.append(
+            f"  {conf_label} `{r['from_table']}`.{r['from_col']}"
+            f" → `{r['to_table']}`.{r['to_col']}"
+            f"  ({r['confidence']} 置信度)"
+        )
+
+    return "\n".join(lines)

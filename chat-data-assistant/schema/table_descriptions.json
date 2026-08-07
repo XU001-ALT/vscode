@@ -1,13 +1,13 @@
 {
-  "alloying": "合金制备实验：熔炼 / 球磨工艺参数、化学式与 XRD 表征结果",
-  "article_and_methods": "文献与方法库：论文标题、DOI、期刊、合金类型与工艺类型",
-  "catalysis": "催化改性实验：原料与催化剂、粒径、添加量及 XRD/XPS 表征",
-  "cycle": "循环寿命测试：温度、压力、初始/最终容量与循环圈数",
-  "dsc": "DSC 差示扫描量热：峰值温度、起始温度、升温速率与活化能",
-  "isothermal": "等温吸放氢动力学测试：温度、压力、活化能与时间-容量曲线",
-  "nano": "纳米材料表征：材料、粒径、化学式与 XRD",
-  "pct": "PCT 压力-组分-温度曲线：平台压力、容量、焓变与熵变",
-  "process": "工艺主表：实验来源 DOI 与工艺类型，其他实验表通过 process_id 关联到此表",
-  "tpd": "TPD 程序升温脱附：起始温度、最大容量与升温速率",
-  "xp_experimental_data": "机器学习预测数据：化学式、元素、催化剂质量分数、升温速率与预测峰温度"
+  "alloying": "合金制备实验：熔炼/球磨工艺参数、化学式与 XRD 表征结果。通过 process_id → process.id 关联工艺主表",
+  "article_and_methods": "文献与方法库：论文标题、DOI、期刊、合金类型与工艺类型（独立参考表，不直接关联实验数据）",
+  "catalysis": "催化改性实验：原料与催化剂、粒径、添加量及 XRD/XPS 表征。通过 process_id → process.id 关联工艺主表",
+  "cycle": "循环寿命测试：温度、压力、初始/最终容量与循环圈数。通过 process_id → process.id 关联工艺主表",
+  "dsc": "DSC 差示扫描量热：峰值温度、起始温度、升温速率与活化能。通过 process_id → process.id 关联工艺主表",
+  "isothermal": "等温吸放氢动力学测试：温度、压力、活化能与时间-容量曲线。通过 process_id → process.id 关联工艺主表",
+  "nano": "纳米材料表征：材料、粒径、化学式与 XRD。通过 process_id → process.id 关联工艺主表",
+  "pct": "PCT 压力-组分-温度曲线：平台压力、容量、焓变与熵变。通过 process_id → process.id 关联工艺主表",
+  "process": "工艺主表（核心关联表）：实验来源 DOI 与工艺类型。几乎所有实验表（alloying/catalysis/cycle/dsc/isothermal/nano/pct/tpd）都通过 process_id 关联到此表的 id 列",
+  "tpd": "TPD 程序升温脱附：起始温度、最大容量与升温速率。通过 process_id → process.id 关联工艺主表",
+  "xp_experimental_data": "机器学习预测数据：化学式、元素、催化剂质量分数、升温速率与预测峰温度（独立数据集，不关联其他实验表）"
 }

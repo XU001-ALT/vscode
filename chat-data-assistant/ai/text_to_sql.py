@@ -3,12 +3,14 @@ Text-to-SQL 核心模块：将自然语言转为可执行 SQL，并支持 Self-C
 
 流程:
     用户问题 + Schema + 对话历史
-        → LLM 生成 SQL
+        → LLM 生成 SQL（多表时自动分配更多 token）
         → SQL 安全校验
         → 执行 (db.executor)
         → 成功 → 返回 DataFrame
         → 失败 → 构建纠错 prompt → LLM 修正 → 重试 (最多 2 次)
 """
+import re
+
 from .llm_client import call_llm
 from .prompts import build_system_prompt, build_prompt, build_correction_prompt
 from .sql_guard import validate_sql
@@ -17,6 +19,13 @@ from .sql_guard import validate_sql
 MAX_CORRECTION_RETRIES = 2
 # 纠错时允许模型输出更长（含原因分析后再给 SQL，避免被截断）
 CORRECTION_MAX_TOKENS = 4096
+# 多表场景首次生成时的 token 数（JOIN + 说明文字更长）
+MULTI_TABLE_MAX_TOKENS = 3072
+
+
+def _count_tables_in_schema(schema_summary: str) -> int:
+    """统计 schema 文本中的表数量。"""
+    return len(re.findall(r"^Table\s+\S+", schema_summary, re.MULTILINE))
 
 
 def _extract_sql_text(text: str) -> str:
@@ -92,8 +101,12 @@ def to_sql_with_correction(
     system = build_system_prompt()
     prompt = build_prompt(schema_summary, chat_history, user_query)
 
+    # 多表场景分配更多 token（JOIN SQL + 说明文字更长）
+    table_count = _count_tables_in_schema(schema_summary)
+    first_attempt_tokens = MULTI_TABLE_MAX_TOKENS if table_count >= 3 else 2048
+
     # 第一次尝试
-    raw_sql = call_llm(prompt, system=system)
+    raw_sql = call_llm(prompt, system=system, max_tokens=first_attempt_tokens)
     sql = _extract_sql_text(raw_sql)
 
     valid, err_msg = validate_sql(sql)

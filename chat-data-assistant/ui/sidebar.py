@@ -1,4 +1,5 @@
 import streamlit as st
+from config import config
 from core.session_state import ensure_defaults
 from core import bootstrap
 from db.executor import fetch_full_schema
@@ -71,6 +72,66 @@ def render():
     st.markdown('<p class="sidebar-title">Schema 管理</p>', unsafe_allow_html=True)
 
     _render_db_status()
+
+    # ── API 配置（用户自定义大模型） ──
+    st.markdown("---")
+    st.markdown('<p class="sidebar-section">API 配置</p>', unsafe_allow_html=True)
+    st.caption("填写后使用你自己的大模型，费用由你承担；留空则使用系统默认配置。")
+
+    # Provider 选择器（默认值取自 .env）
+    providers = ["openai", "deepseek"]
+    effective_provider = (
+        st.session_state.get('llm_provider', '').strip()
+        or config.LLM_PROVIDER.strip().lower()
+    )
+    try:
+        provider_idx = providers.index(effective_provider)
+    except ValueError:
+        provider_idx = 0
+
+    selected_provider = st.selectbox(
+        "LLM 提供商",
+        providers,
+        index=provider_idx,
+        key="llm_provider_sel",
+    )
+    st.session_state['llm_provider'] = selected_provider
+
+    # Base URL 输入框（placeholder 随 provider 变化）
+    url_placeholders = {
+        "openai": "https://api.openai.com",
+        "deepseek": "https://api.deepseek.com",
+    }
+    st.text_input(
+        "API Base URL",
+        key="llm_base_url",
+        placeholder=url_placeholders.get(selected_provider, "https://api.openai.com"),
+    )
+
+    # API Key 输入框（密码模式）
+    st.text_input(
+        "API Key",
+        key="llm_api_key",
+        type="password",
+        placeholder="sk-...",
+    )
+
+    # 模型名称
+    st.text_input(
+        "模型名称",
+        key="llm_model",
+        placeholder="留空自动选择（如 gpt-4o-mini / deepseek-v4-flash）",
+    )
+
+    # 状态提示
+    if not st.session_state.get('llm_api_key', '').strip():
+        env_key = config.LLM_API_KEY
+        if env_key:
+            st.caption(f"当前使用 .env 配置: {config.LLM_PROVIDER} / {config.LLM_MODEL or '默认模型'}")
+        else:
+            st.warning("未配置 API Key，请在侧边栏填写或检查 .env 文件")
+    else:
+        st.caption(f"已启用自定义 API: {selected_provider} / {st.session_state.get('llm_model', '') or '默认模型'}")
 
     st.markdown("---")
     st.markdown('<p class="sidebar-section">数据使用说明</p>', unsafe_allow_html=True)

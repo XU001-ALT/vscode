@@ -1,4 +1,7 @@
-"""LLM 调用封装，支持 OpenAI、DeepSeek 和本地开发模式。"""
+"""LLM 调用封装，支持 OpenAI、DeepSeek 和本地开发模式。
+
+配置优先级: 侧边栏用户输入 > .env / Streamlit secrets > 默认值
+"""
 import re
 from typing import Any
 
@@ -6,6 +9,26 @@ import httpx
 from config import config
 
 _SQL_START_RE = re.compile(r"^\s*(select|with|explain|show|describe|desc)\b", re.IGNORECASE | re.MULTILINE)
+
+
+def _get_effective_config() -> tuple[str, str, str, str]:
+    """获取生效的 LLM 配置，优先级: 侧边栏用户输入 > .env 配置。
+
+    Returns:
+        (api_key, provider, base_url, model) 四元组
+    """
+    try:
+        import streamlit as st
+        api_key = st.session_state.get('llm_api_key', '').strip() or config.LLM_API_KEY
+        provider = st.session_state.get('llm_provider', '').strip() or config.LLM_PROVIDER
+        base_url = st.session_state.get('llm_base_url', '').strip() or config.LLM_BASE_URL
+        model = st.session_state.get('llm_model', '').strip() or config.LLM_MODEL
+    except Exception:
+        api_key = config.LLM_API_KEY
+        provider = config.LLM_PROVIDER
+        base_url = config.LLM_BASE_URL
+        model = config.LLM_MODEL
+    return api_key, provider, base_url, model
 
 
 def _normalize_response_text(text: str) -> str:
@@ -46,16 +69,19 @@ def _post_openai_compatible(
     max_tokens: int = 2048,
     temperature: float = 0.2,
     model: str = "gpt-3.5-turbo",
+    api_key: str = "",
+    base_url: str = "",
 ) -> dict[str, Any]:
     """统一的 OpenAI 兼容 API 调用。"""
-    if not config.LLM_API_KEY:
-        raise RuntimeError("LLM_API_KEY 未设置，请在 .env 中配置")
+    api_key = api_key or config.LLM_API_KEY
+    if not api_key:
+        raise RuntimeError("LLM_API_KEY 未设置，请在侧边栏填写或 .env 中配置")
 
-    base_url = config.LLM_BASE_URL.strip() or "https://api.openai.com"
+    base_url = (base_url or config.LLM_BASE_URL).strip() or "https://api.openai.com"
     url = base_url.rstrip("/") + endpoint
 
     headers = {
-        "Authorization": f"Bearer {config.LLM_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
@@ -100,8 +126,10 @@ def call_llm(
     Returns:
         LLM 回复的纯文本（已提取 SQL）
     """
-    provider = config.LLM_PROVIDER.strip().lower().replace(" ", "")
-    model = model or config.LLM_MODEL or None
+    api_key, provider, base_url, default_model = _get_effective_config()
+
+    provider = provider.strip().lower().replace(" ", "")
+    model = model or default_model or None
     max_tokens = max_tokens or config.LLM_MAX_TOKENS
     temperature = temperature if temperature != 0.2 else config.LLM_TEMPERATURE
 
@@ -126,6 +154,8 @@ def call_llm(
         max_tokens=max_tokens,
         temperature=temperature,
         model=model,
+        api_key=api_key,
+        base_url=base_url,
     )
     content = data["choices"][0]["message"]["content"]
     return _normalize_response_text(content)
@@ -142,8 +172,10 @@ def call_llm_raw(
 
     用于需要完整回复文本的场景（如纠错、推荐等）。
     """
-    provider = config.LLM_PROVIDER.strip().lower().replace(" ", "")
-    model = model or config.LLM_MODEL or None
+    api_key, provider, base_url, default_model = _get_effective_config()
+
+    provider = provider.strip().lower().replace(" ", "")
+    model = model or default_model or None
     max_tokens = max_tokens or config.LLM_MAX_TOKENS
     temperature = temperature if temperature != 0.2 else config.LLM_TEMPERATURE
 
@@ -166,5 +198,7 @@ def call_llm_raw(
         max_tokens=max_tokens,
         temperature=temperature,
         model=model,
+        api_key=api_key,
+        base_url=base_url,
     )
     return data["choices"][0]["message"]["content"].strip()

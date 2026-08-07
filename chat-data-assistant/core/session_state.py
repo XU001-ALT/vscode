@@ -13,6 +13,15 @@ def ensure_defaults():
         st.session_state['last_df'] = None
     if 'chart_type' not in st.session_state:
         st.session_state['chart_type'] = 'line'
+    # 用户自定义 LLM 配置（空字符串表示使用 .env 默认值）
+    if 'llm_api_key' not in st.session_state:
+        st.session_state['llm_api_key'] = ''
+    if 'llm_provider' not in st.session_state:
+        st.session_state['llm_provider'] = ''
+    if 'llm_base_url' not in st.session_state:
+        st.session_state['llm_base_url'] = ''
+    if 'llm_model' not in st.session_state:
+        st.session_state['llm_model'] = ''
 
 
 _CHART_WIDGET_KEYS = (
