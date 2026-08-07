@@ -31,13 +31,21 @@ def _run_pipeline(query: str):
         st.session_state['last_sql'] = None
         st.session_state['last_df'] = None
         error_detail = str(e)
+
+        # 安全过滤：防止 API Key 在错误消息中泄漏
+        try:
+            from core.secrets import sanitize_error
+            error_detail = sanitize_error(error_detail)
+        except ImportError:
+            pass
+
         # 对常见错误给出中文提示
         if '401' in error_detail or 'Authorization' in error_detail or 'Unauthorized' in error_detail:
-            hint = "🔑 API Key 无效或未配置，请检查 .env 中的 LLM_API_KEY。"
+            hint = "🔑 API Key 无效或未配置，请检查侧边栏或 .env 中的 API Key。"
         elif 'timeout' in error_detail.lower() or 'timed out' in error_detail.lower():
             hint = "⏱️ LLM 请求超时，请稍后重试。"
         elif 'Connection' in error_detail or 'connect' in error_detail.lower():
-            hint = "🌐 无法连接到 LLM 服务，请检查网络和 LLM_BASE_URL。"
+            hint = "🌐 无法连接到 LLM 服务，请检查网络和 API Base URL。"
         else:
             hint = f"❌ 系统错误: {error_detail}"
         append_message('assistant', hint)

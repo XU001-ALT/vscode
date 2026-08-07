@@ -13,9 +13,9 @@ def ensure_defaults():
         st.session_state['last_df'] = None
     if 'chart_type' not in st.session_state:
         st.session_state['chart_type'] = 'line'
-    # 用户自定义 LLM 配置（空字符串表示使用 .env 默认值）
-    if 'llm_api_key' not in st.session_state:
-        st.session_state['llm_api_key'] = ''
+    # 用户自定义 LLM 配置
+    # 注意: API Key 不在 session_state 中存储明文，而是通过 core.secrets 服务端私有存储
+    # 仅保留 token 引用和 UI 辅助字段
     if 'llm_provider' not in st.session_state:
         st.session_state['llm_provider'] = ''
     if 'llm_base_url' not in st.session_state:
@@ -29,9 +29,18 @@ _CHART_WIDGET_KEYS = (
     'pie_names', 'pie_values', 'chart_type',
 )
 
+_API_INPUT_KEYS = (
+    'llm_api_key_input',   # 密码输入框的值（敏感，清除后不留痕迹）
+)
+
 
 def clear_session():
-    """重置会话：清空聊天记录、查询结果、图表控件与 Tab 状态。"""
+    """重置会话：清空聊天记录、查询结果、图表控件与 Tab 状态。
+
+    注意：不清除 LLM 配置（Base URL / Model / 密钥令牌），
+    因为这些是用户手动填入的，频繁清空体验很差。
+    但会清除密码输入框中的明文残留。
+    """
     st.session_state['messages'] = []
     st.session_state['last_sql'] = None
     st.session_state['last_df'] = None
@@ -41,4 +50,7 @@ def clear_session():
     st.session_state['_rec_gen'] = None
     st.session_state['_seen_rec_gen'] = None
     for k in _CHART_WIDGET_KEYS:
+        st.session_state.pop(k, None)
+    # 清除密码输入框明文残留（密钥本身在服务端私有存储中，不受影响）
+    for k in _API_INPUT_KEYS:
         st.session_state.pop(k, None)

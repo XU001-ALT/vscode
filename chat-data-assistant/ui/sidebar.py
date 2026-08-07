@@ -2,12 +2,66 @@ import streamlit as st
 from config import config
 from core.session_state import ensure_defaults
 from core import bootstrap
+from core.secrets import store as secrets_store, remove as secrets_remove, mask_key, TOKEN_KEY, HAS_CUSTOM_KEY
 from db.executor import fetch_full_schema
 from db.connection import db_manager
 from schema.loader import load_from_text
 from schema.validator import validate_schema
 from schema.summarizer import summarize_schema
 from schema.descriptions import load_descriptions
+
+# ── 模型预设列表 ──
+MODEL_PRESETS = [
+    {"label": "DeepSeek V4 Flash",         "model": "deepseek-v4-flash",  "url": "https://api.deepseek.com"},
+    {"label": "DeepSeek V4 Pro",           "model": "deepseek-v4-pro",    "url": "https://api.deepseek.com"},
+    {"label": "GPT-4o Mini",               "model": "gpt-4o-mini",        "url": "https://api.openai.com"},
+    {"label": "GPT-4o",                    "model": "gpt-4o",             "url": "https://api.openai.com"},
+    {"label": "通义千问 Qwen-Plus",         "model": "qwen-plus",          "url": "https://dashscope.aliyuncs.com/compatible-mode/v1"},
+    {"label": "通义千问 Qwen-Max",          "model": "qwen-max",           "url": "https://dashscope.aliyuncs.com/compatible-mode/v1"},
+    {"label": "Moonshot Kimi",             "model": "moonshot-v1-8k",     "url": "https://api.moonshot.cn/v1"},
+    {"label": "百川 Baichuan 4",           "model": "Baichuan4",          "url": "https://api.baichuan-ai.com/v1"},
+    {"label": "自定义…",                   "model": "",                   "url": ""},
+]
+
+_PRESET_LABELS = [p["label"] for p in MODEL_PRESETS]
+# "自定义…" 在列表中的索引
+_CUSTOM_INDEX = len(MODEL_PRESETS) - 1
+
+
+def _on_preset_change():
+    """预设切换回调：自动填充 Model 和 URL，但不覆盖用户已编辑的内容。"""
+    label = st.session_state.get("model_preset_sel", "")
+    for p in MODEL_PRESETS:
+        if p["label"] == label:
+            if p["model"]:
+                st.session_state["llm_model"] = p["model"]
+            if p["url"]:
+                st.session_state["llm_base_url"] = p["url"]
+            break
+
+
+def _on_key_input():
+    """API Key 输入回调：同步到服务端私有存储。
+
+    Streamlit 限制：密码输入框的值必须经过 session_state（WebSocket）。
+    我们无法完全避免，但做了以下防护：
+    1. 服务端存储是唯一权威来源（llm_client 从服务端读，不读 session_state）
+    2. UI 中所有展示都用 mask_key() 脱敏
+    3. 用户清空输入时同步清除服务端存储
+    """
+    key_value = st.session_state.get("llm_api_key_input", "").strip()
+    old_token = st.session_state.get(TOKEN_KEY, "")
+
+    if key_value:
+        # 有输入 → 存入服务端，更新令牌
+        token = secrets_store(key_value)
+        st.session_state[TOKEN_KEY] = token
+        st.session_state[HAS_CUSTOM_KEY] = True
+    elif old_token:
+        # 用户清空了输入框 → 清除服务端存储
+        secrets_remove(old_token)
+        st.session_state[TOKEN_KEY] = ""
+        st.session_state[HAS_CUSTOM_KEY] = False
 
 
 def _get_db_config() -> dict:
@@ -78,60 +132,91 @@ def render():
     st.markdown('<p class="sidebar-section">API 配置</p>', unsafe_allow_html=True)
     st.caption("填写后使用你自己的大模型，费用由你承担；留空则使用系统默认配置。")
 
-    # Provider 选择器（默认值取自 .env）
-    providers = ["openai", "deepseek"]
-    effective_provider = (
-        st.session_state.get('llm_provider', '').strip()
-        or config.LLM_PROVIDER.strip().lower()
-    )
+    # 初始化 session_state 中的令牌字段
+    if TOKEN_KEY not in st.session_state:
+        st.session_state[TOKEN_KEY] = ""
+    if HAS_CUSTOM_KEY not in st.session_state:
+        st.session_state[HAS_CUSTOM_KEY] = False
+
+    # ── 模型预设选择 ──
     try:
-        provider_idx = providers.index(effective_provider)
-    except ValueError:
-        provider_idx = 0
+        preset_idx = _CUSTOM_INDEX  # 默认"自定义…"
+        label = st.selectbox(
+            "模型选择",
+            _PRESET_LABELS,
+            index=preset_idx,
+            key="model_preset_sel",
+            on_change=_on_preset_change,
+        )
+    except Exception:
+        label = st.selectbox(
+            "模型选择",
+            _PRESET_LABELS,
+            key="model_preset_sel",
+            on_change=_on_preset_change,
+        )
 
-    selected_provider = st.selectbox(
-        "LLM 提供商",
-        providers,
-        index=provider_idx,
-        key="llm_provider_sel",
-    )
-    st.session_state['llm_provider'] = selected_provider
-
-    # Base URL 输入框（placeholder 随 provider 变化）
-    url_placeholders = {
-        "openai": "https://api.openai.com",
-        "deepseek": "https://api.deepseek.com",
-    }
+    # ── API Base URL ──
     st.text_input(
         "API Base URL",
         key="llm_base_url",
-        placeholder=url_placeholders.get(selected_provider, "https://api.openai.com"),
+        placeholder="https://api.deepseek.com",
     )
 
-    # API Key 输入框（密码模式）
+    # ── API Key（输入时经过 session_state，但 llm_client 从服务端私有存储读取，不依赖 session_state） ──
+    key_is_stored = bool(st.session_state.get(HAS_CUSTOM_KEY))
+
+    # 密钥输入框（密码模式，浏览器端显示为圆点）
     st.text_input(
         "API Key",
-        key="llm_api_key",
+        key="llm_api_key_input",
         type="password",
-        placeholder="sk-...",
+        placeholder="sk-..." if not key_is_stored else "••••••••（已设置）",
+        on_change=_on_key_input,
     )
 
-    # 模型名称
+    # 兼容旧代码：迁移以前存在 llm_api_key 中的值到新安全存储
+    old_legacy_key = st.session_state.get("llm_api_key", "").strip()
+    if old_legacy_key and not key_is_stored:
+        token = secrets_store(old_legacy_key)
+        st.session_state[TOKEN_KEY] = token
+        st.session_state[HAS_CUSTOM_KEY] = True
+        st.session_state["llm_api_key"] = ""
+
+    # 清除按钮
+    if key_is_stored:
+        from core.secrets import retrieve, mask_key
+        token = st.session_state.get(TOKEN_KEY, "")
+        actual_key = retrieve(token)
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.caption(f"当前密钥：{mask_key(actual_key)}")
+        with col2:
+            if st.button("清除", key="clear_key_btn"):
+                secrets_remove(token)
+                st.session_state[TOKEN_KEY] = ""
+                st.session_state[HAS_CUSTOM_KEY] = False
+                st.session_state["llm_api_key_input"] = ""
+                st.rerun()
+
+    # ── 模型名称 ──
     st.text_input(
         "模型名称",
         key="llm_model",
-        placeholder="留空自动选择（如 gpt-4o-mini / deepseek-v4-flash）",
+        placeholder="留空自动选择（如 deepseek-v4-flash / gpt-4o-mini）",
     )
 
-    # 状态提示
-    if not st.session_state.get('llm_api_key', '').strip():
+    # ── 状态提示 ──
+    if not key_is_stored:
         env_key = config.LLM_API_KEY
         if env_key:
-            st.caption(f"当前使用 .env 配置: {config.LLM_PROVIDER} / {config.LLM_MODEL or '默认模型'}")
+            from core.secrets import mask_key
+            st.caption(f"当前使用 .env 配置: {mask_key(env_key)}")
         else:
             st.warning("未配置 API Key，请在侧边栏填写或检查 .env 文件")
     else:
-        st.caption(f"已启用自定义 API: {selected_provider} / {st.session_state.get('llm_model', '') or '默认模型'}")
+        model_display = st.session_state.get('llm_model', '') or '默认模型'
+        st.caption(f"✅ 已启用自定义 API: {model_display}")
 
     st.markdown("---")
     st.markdown('<p class="sidebar-section">数据使用说明</p>', unsafe_allow_html=True)

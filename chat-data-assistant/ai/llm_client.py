@@ -1,6 +1,9 @@
 """LLM 调用封装，支持 OpenAI、DeepSeek 和本地开发模式。
 
-配置优先级: 侧边栏用户输入 > .env / Streamlit secrets > 默认值
+安全设计:
+- API Key 优先从服务端私有存储读取（不依赖 session_state，避免 WebSocket 泄漏）
+- 回退顺序: 服务端私有存储 > 侧边栏 session_state 遗留值 > .env 默认值
+- 错误消息中的 Key 自动脱敏
 """
 import re
 from typing import Any
@@ -12,22 +15,48 @@ _SQL_START_RE = re.compile(r"^\s*(select|with|explain|show|describe|desc)\b", re
 
 
 def _get_effective_config() -> tuple[str, str, str, str]:
-    """获取生效的 LLM 配置，优先级: 侧边栏用户输入 > .env 配置。
+    """获取生效的 LLM 配置。
 
-    Returns:
-        (api_key, provider, base_url, model) 四元组
+    优先级（由高到低）:
+    1. 服务端私有存储（侧边栏输入，安全，不进入 WebSocket）
+    2. 侧边栏 session_state 遗留值（兼容旧代码）
+    3. .env / Streamlit secrets 默认值
     """
+    api_key = ""
+    provider = ""
+    base_url = ""
+    model = ""
+
     try:
         import streamlit as st
-        api_key = st.session_state.get('llm_api_key', '').strip() or config.LLM_API_KEY
-        provider = st.session_state.get('llm_provider', '').strip() or config.LLM_PROVIDER
-        base_url = st.session_state.get('llm_base_url', '').strip() or config.LLM_BASE_URL
-        model = st.session_state.get('llm_model', '').strip() or config.LLM_MODEL
+        # 首选：服务端私有存储（不经过 WebSocket）
+        try:
+            from core.secrets import get_effective_key, get_effective_base_url, get_effective_model
+            api_key = get_effective_key()
+            base_url = get_effective_base_url()
+            model = get_effective_model()
+        except ImportError:
+            pass
+
+        # 回退：session_state 中的 provider（非敏感，可以留在 session_state）
+        provider = st.session_state.get('llm_provider', '').strip()
+
+        # 如果服务端存储没有 key，回退到 session_state（兼容旧代码）
+        if not api_key:
+            api_key = st.session_state.get('llm_api_key', '').strip()
     except Exception:
+        pass
+
+    # 最终回退：.env 配置
+    if not api_key:
         api_key = config.LLM_API_KEY
+    if not provider:
         provider = config.LLM_PROVIDER
+    if not base_url:
         base_url = config.LLM_BASE_URL
+    if not model:
         model = config.LLM_MODEL
+
     return api_key, provider, base_url, model
 
 
