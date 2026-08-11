@@ -2,7 +2,7 @@ import streamlit as st
 from ui import render_sidebar, render_chat_panel, render_result_panel
 from core import bootstrap
 
-st.set_page_config(page_title="hydrogen-chat", page_icon=" H₂", layout="wide")
+st.set_page_config(page_title="chat-data", page_icon=" H₂", layout="wide")
 
 # 启动即后台自动连接数据库并拉取 schema，失败自动重试，用户无感
 bootstrap.start()
@@ -228,7 +228,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 顶部标题：居中展示；「清空会话」按钮已移至查询框旁（见 chat_panel）
-st.markdown('<p class="main-title">hydrogen-chat</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-title">chat-data</p>', unsafe_allow_html=True)
 
 # 后台连接成功后，把自动拉取的 Schema 同步进会话（不覆盖手动加载）
 if not st.session_state.get('orm_schema'):
