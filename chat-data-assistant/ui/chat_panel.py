@@ -129,9 +129,9 @@ def render():
     if query:
         _submit_query(query)
 
-    # 对话历史（输入框下方，按时间顺序排列）
+    # 界面只展示最近一轮对话（完整历史仍保存在 session 中供 LLM 上下文使用），避免消息积累导致界面混乱
     history = get_history()
-    for msg in history:
+    for msg in history[-2:]:
         role = msg.get('role', 'system')
         content = msg.get('content', '')
         if role == 'user':

@@ -10,6 +10,9 @@ Prompt 工程模块：System Prompt、Few-shot 示例、输出约束、纠错指
 - 多表优先：遇到涉及多个概念的问题时，主动探索 JOIN 可能性
 """
 
+# 注入 LLM 的对话历史条数上限（消息条数，避免无限增长导致 token 成本过高）
+MAX_CONTEXT_MESSAGES = 14
+
 # ============================================================
 #  System Prompt（系统角色与行为约束）
 # ============================================================
@@ -301,10 +304,10 @@ def build_prompt(
     if include_few_shot:
         parts.append(FEW_SHOT_EXAMPLES)
 
-    # 对话历史（最近若干轮，含上一轮的 SQL）
+    # 对话历史（最多取最近 MAX_CONTEXT_MESSAGES 条，含上一轮的 SQL），供 LLM 多轮纠错使用
     if chat_history:
         history_lines: list[str] = []
-        for msg in chat_history[-14:]:  # 最多保留最近 14 条消息
+        for msg in chat_history[-MAX_CONTEXT_MESSAGES:]:
             role_label = "用户" if msg.get("role") == "user" else "助手"
             content = msg.get("content", "")
             line = f"{role_label}: {content}"
