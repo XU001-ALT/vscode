@@ -89,7 +89,6 @@ def _render_chart_section(df: pd.DataFrame):
 def render():
     st.markdown('<p class="section-header">查询结果</p>', unsafe_allow_html=True)
     df = st.session_state.get('last_df')
-    last_sql = st.session_state.get('last_sql')
 
     tab_data, tab_chart = st.tabs(
         ["数据预览", "图表"],
@@ -114,10 +113,3 @@ def render():
             _render_chart_section(df)
         else:
             st.info("要渲染图表，请先执行查询得到数据（见「数据预览」）。")
-
-    # 调试信息：SQL 不展示给顾客，但排错/售后时需要
-    with st.expander("调试信息（SQL）"):
-        if last_sql:
-            st.code(last_sql, language='sql')
-        else:
-            st.info("暂无生成的 SQL")

@@ -264,7 +264,7 @@ def render():
                 except Exception as e:
                     st.error(f"拉取失败: {e}")
 
-    with st.expander("编辑 / 重新加载 Schema（仅需一次）", expanded=not schema_loaded):
+    with st.expander("上传 / 重新加载 Schema（仅需一次）", expanded=not schema_loaded):
         uploaded = st.file_uploader("上传 ORM 文件（Python / JSON / TXT）", type=["py", "json", "txt"], key="orm_uploader")
         if uploaded is not None:
             try:
@@ -274,13 +274,6 @@ def render():
             if _process_schema(content):
                 n = len(st.session_state.get('orm_schema_tables', []))
                 st.success(f"已加载并处理 Schema，共 {n} 张表")
-
-        st.text_area("粘贴或编辑 ORM/schema（仅需一次）", value=st.session_state.get('orm_schema', ''), key="orm_input", height=200)
-        if st.button("确认并缓存 ORM"):
-            raw = st.session_state.get('orm_input', '')
-            if _process_schema(raw):
-                n = len(st.session_state.get('orm_schema_tables', []))
-                st.success(f"ORM 已缓存，共 {n} 张表")
 
     st.markdown("---")
     st.markdown('<p class="sidebar-section">状态</p>', unsafe_allow_html=True)

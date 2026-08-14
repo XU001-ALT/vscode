@@ -36,6 +36,9 @@ class Config:
     LLM_TEMPERATURE: float = float(_get("LLM_TEMPERATURE", "0.2"))
     LLM_MAX_TOKENS: int = int(_get("LLM_MAX_TOKENS", "2048"))  # SQL 生成最大 token 数
     
+    # 调试开关：为 True 时把实际执行的 SQL 写入 logs/sql_debug.log（仅服务端可见，界面不展示）
+    DEBUG_SQL: bool = _get("DEBUG_SQL", "false").lower() in ("true", "1", "yes")
+    
     @classmethod
     def validate_db(cls) -> list[str]:
         """验证数据库配置"""

@@ -1,9 +1,13 @@
+import re
+from datetime import datetime
+from pathlib import Path
+
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
+from config import config
 from db.connection import get_engine, get_connection, db_manager
 from db.exceptions import SQLExecutionError, SecurityError
-import re
 
 # 危险SQL关键字（用于简单安全校验）
 DANGEROUS_KEYWORDS = [
@@ -32,8 +36,25 @@ def check_sql_safety(sql: str) -> None:
         )
 
 
+def _log_sql_debug(sql: str) -> None:
+    """调试用：把实际执行的 SQL 写入 logs/sql_debug.log。
+
+    仅当 DEBUG_SQL=true 时启用，纯服务端操作，客户界面永远看不到 SQL。
+    """
+    if not config.DEBUG_SQL:
+        return
+    try:
+        log_dir = Path(__file__).resolve().parent.parent / "logs"
+        log_dir.mkdir(exist_ok=True)
+        with open(log_dir / "sql_debug.log", "a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now().isoformat(sep=' ', timespec='seconds')}] {sql}\n\n")
+    except Exception:
+        pass
+
+
 def _run_query(sql: str, max_rows: int) -> pd.DataFrame:
     """执行一次查询并截断行数（内部函数）"""
+    _log_sql_debug(sql)
     engine = get_engine()
     df = pd.read_sql(text(sql), engine)
     if len(df) > max_rows:
