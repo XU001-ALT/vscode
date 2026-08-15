@@ -115,19 +115,10 @@ def _submit_query(query: str):
 
 
 def render():
-    """渲染聊天面板：输入框固定在顶部，对话呈现在其下方，避免消息过多把查询口顶到下面。"""
+    """渲染聊天面板：对话在上，输入框固定在底部。"""
     ensure_defaults()
 
-    # 输入框（顶部，始终可见），右侧并排「清空会话」按钮
-    query_col, clear_col = st.columns([6, 1], vertical_alignment="center")
-    with query_col:
-        query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
-    with clear_col:
-        if st.button("清空会话", use_container_width=True, key="clear_session_btn"):
-            clear_session()
-            st.rerun()
-    if query:
-        _submit_query(query)
+    st.markdown('<p class="chat-title">对话</p>', unsafe_allow_html=True)
 
     # 界面只展示最近一轮对话（完整历史仍保存在 session 中供 LLM 上下文使用），避免消息积累导致界面混乱
     history = get_history()
@@ -143,3 +134,15 @@ def render():
         else:
             with st.chat_message("assistant"):
                 st.markdown(content)
+
+    # 输入框（底部，始终可见），右侧并排「清空会话」按钮，整体包进蓝色边框
+    with st.container(border=True, key="query_box"):
+        query_col, clear_col = st.columns([6, 1], vertical_alignment="center")
+        with query_col:
+            query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
+        with clear_col:
+            if st.button("清空会话", use_container_width=True, key="clear_session_btn"):
+                clear_session()
+                st.rerun()
+    if query:
+        _submit_query(query)

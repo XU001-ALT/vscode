@@ -54,19 +54,59 @@ st.markdown("""
         color: #fff !important;
     }
 
-    /* 主标题 - 卡片化 + 科技角标 */
+    /* 主标题 - 黑底白字横栏，固定在页面最顶部并横跨全宽（含侧边栏上方） */
     .main-title {
-        font-size: 2rem !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 68px;
+        line-height: 68px;
+        padding: 0 20px;
+        margin: 0;
+        box-sizing: border-box;
+        z-index: 999999;
+        font-size: 1.6rem !important;
         font-weight: 700 !important;
-        color: #fff;
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 14px 20px;
-        position: relative;
+        color: #ffffff;
+        background: #000000;
         letter-spacing: 1px;
-        margin-bottom: 0.5rem;
         text-align: center;
+    }
+    /* 顶栏下移到标题栏下方：既保留左上角「展开/收起侧边栏」的汉堡按钮，又不遮挡标题 */
+    [data-testid="stHeader"] {
+        position: fixed !important;
+        top: 68px !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: transparent !important;
+        border-bottom: none !important;
+        box-shadow: none !important;
+        z-index: 1000000 !important;
+    }
+    /* 整体内容区统一下移：黑底标题 68px 起 */
+    [data-testid="stAppViewContainer"] {
+        padding-top: 68px !important;
+    }
+    /* 布局容器：无外框，左右距界面边缘约 2mm（8px）；三个栏的边框自身构成整体边界 */
+    [data-testid="stMainBlockContainer"] {
+        max-width: none !important;
+        min-height: calc(100vh - 76px);
+        margin: 0 8px;
+        padding: 0 !important;
+        display: flex;
+        flex-direction: column;
+    }
+    [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
+        flex: 1;
+        min-height: calc(100vh - 84px);
+        align-items: stretch;
     }
     .main-title::before, .main-title::after {
         content: '';
@@ -89,6 +129,19 @@ st.markdown("""
         border: 1px solid var(--border-color);
         border-radius: 4px;
         margin: 16px 0 12px 0;
+    }
+
+    /* 询问栏标题（与 section-header 同风格，但独立类名以便单独定位该栏） */
+    .chat-title {
+        color: #fff !important;
+        font-size: 1rem;
+        font-weight: 600;
+        text-align: center;
+        padding: 10px 15px;
+        background: rgba(30, 58, 138, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        margin: 0 0 12px 0;
     }
 
     /* 侧边栏标题 */
@@ -224,11 +277,56 @@ st.markdown("""
         font-weight: bold;
         text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
     }
+
+    /* ── 三栏布局：内部蓝边框独立区域（2px 亮蓝，边缘更清晰） ── */
+    [data-testid="stColumn"]:has(.sidebar-title),
+    [data-testid="stColumn"]:has(.chat-title),
+    [data-testid="stColumn"]:has(.section-header) {
+        border: 2px solid #3b82f6;
+        border-radius: 4px;
+        padding: 12px;
+        background: var(--card-bg);
+    }
+    /* 三栏之间的间距压缩到约 6px（1~2 毫米），彼此贴近 */
+    [data-testid="stMainBlockContainer"] [data-testid="stHorizontalBlock"]:has([data-testid="stColumn"]) {
+        gap: 6px !important;
+    }
+    /* 左侧栏：其余内容均匀分布 */
+    [data-testid="stColumn"]:has(.sidebar-title) {
+        display: flex;
+        flex-direction: column;
+    }
+    [data-testid="stColumn"]:has(.sidebar-title) > [data-testid="stVerticalBlock"] {
+        flex: 1;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    /* 询问栏：对话在上，输入框固定在底部 */
+    [data-testid="stColumn"]:has(.chat-title) {
+        display: flex;
+        flex-direction: column;
+    }
+    [data-testid="stColumn"]:has(.chat-title) > [data-testid="stVerticalBlock"] {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    [data-testid="stColumn"]:has(.chat-title) > [data-testid="stVerticalBlock"] > .st-key-query_box {
+        margin-top: auto;
+    }
+    /* 询问栏的输入区（输入框 + 清空会话）整体包进蓝色边框 */
+    .st-key-query_box {
+        border: 2px solid #3b82f6 !important;
+        border-radius: 4px;
+        background: rgba(20, 30, 60, 0.5);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# 顶部标题：居中展示；「清空会话」按钮已移至查询框旁（见 chat_panel）
-st.markdown('<p class="main-title">chat-data</p>', unsafe_allow_html=True)
+# 顶部标题：黑底白字横栏；「清空会话」按钮已移至查询框旁（见 chat_panel）
+st.markdown('<p class="main-title">智能绘图助手（chat-data）</p>', unsafe_allow_html=True)
 
 # 后台连接成功后，把自动拉取的 Schema 同步进会话（不覆盖手动加载）
 if not st.session_state.get('orm_schema'):
@@ -237,11 +335,11 @@ if not st.session_state.get('orm_schema'):
         st.session_state['orm_schema'] = boot['schema']
         st.session_state['orm_schema_tables'] = boot['tables']
 
-with st.sidebar:
+# 三栏布局：左侧栏 2 : 询问栏 2 : 结果栏 4，蓝边框分隔为独立区域
+left_col, chat_col, result_col = st.columns([2, 2, 4], gap="small")
+with left_col:
     render_sidebar()
 
-# 左右分栏：聊天区在左，结果区（数据 + 图表）在右，结果始终可见
-chat_col, result_col = st.columns([2, 3], gap="large")
 with chat_col:
     render_chat_panel()
 
