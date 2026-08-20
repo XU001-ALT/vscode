@@ -36,15 +36,11 @@ st.markdown("---")
 if page == "Home":
     render_home()
 elif page == "AI Query":
-    left_col, main_col = st.columns([2, 8], gap="medium")
-    with left_col:
-        render_sidebar()
-    with main_col:
-        query_col, result_col = st.columns([1, 1], gap="medium")
-        with query_col:
-            render_chat_panel()
-        with result_col:
-            render_result_panel()
+    query_col, result_col = st.columns([1, 1], gap="medium")
+    with query_col:
+        render_chat_panel()
+    with result_col:
+        render_result_panel()
 elif page == "Settings":
     render_settings()
 
