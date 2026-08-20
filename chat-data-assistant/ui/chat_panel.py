@@ -114,18 +114,19 @@ def render():
             if query and query.strip():
                 _submit_query(query.strip())
 
-    # 聊天消息区域（flex:1 撑满剩余空间，溢出滚动）
+    # 聊天消息区域（仅显示最近一轮对话）
     with st.container(key="chat_messages_area"):
         history = get_history()
-        for msg in history[-2:]:
+        recent = history[-2:] if len(history) >= 2 else history[-1:]
+        for msg in recent:
             role = msg.get('role', 'system')
             content = msg.get('content', '')
             if role == 'user':
-                with st.chat_message("user"):
+                with st.chat_message("user", avatar=""):
                     st.markdown(content)
             elif role == 'system':
-                with st.chat_message("assistant"):
+                with st.chat_message("assistant", avatar=""):
                     st.info(content)
             else:
-                with st.chat_message("assistant"):
+                with st.chat_message("assistant", avatar=""):
                     st.markdown(content)
