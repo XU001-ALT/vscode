@@ -23,7 +23,7 @@ def render_home():
     left, right = st.columns([1, 1], gap="large")
 
     with left:
-        asset = Path("assets/chat-data-home.png")
+        asset = Path(__file__).resolve().parent.parent / "assets" / "chat-data-home.png"
         if asset.exists():
             st.image(str(asset), use_container_width=True)
         else:
