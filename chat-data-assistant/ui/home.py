@@ -9,7 +9,7 @@ def render_home():
     st.markdown(
         f"""
         <div class="cd-hero" style="padding:2.5rem 2rem;">
-            <div style="font-size:3.2rem;font-weight:700;color:white;letter-spacing:.05em;">智能绘图，一语即达</div>
+            <div style="font-size:3.2rem;font-weight:700;color:white;letter-spacing:.05em;">{t("hero_slogan")}</div>
         </div>
         """,
         unsafe_allow_html=True,
