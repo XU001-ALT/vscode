@@ -115,6 +115,11 @@ def apply_theme():
         .cd-entry {
             text-align: center;
         }
+
+        /* 隐藏聊天消息的头像图标 */
+        [data-testid="stChatMessageAvatar"] {
+            display: none !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
