@@ -99,6 +99,21 @@ TRANSLATIONS = {
     "no_numeric": {"zh": "当前结果集中没有可用的数值列，请调整查询",
                    "en": "No numeric column available. Adjust query."},
     "y_axis": {"zh": "Y 轴", "en": "Y axis"},
+
+    # ── home.py ──
+    "home_title": {"zh": "数据智能，一语即达", "en": "Data Intelligence, One Query Away"},
+    "home_desc": {"zh": "通过自然语言与数据库对话，快速获取洞察与可视化分析。",
+                  "en": "Talk to your database in natural language and get instant insights with visual analytics."},
+    "how_to_use": {"zh": "使用流程", "en": "How to Use"},
+    "step_config": {"zh": "配置连接", "en": "Configure"},
+    "step_config_desc": {"zh": "完成 API、数据库以及 Schema 配置。",
+                         "en": "Set up your API, database, and schema."},
+    "step_query": {"zh": "自然提问", "en": "Query"},
+    "step_query_desc": {"zh": "通过自然语言向数据库提出问题。",
+                        "en": "Ask questions about your data in natural language."},
+    "step_analyze": {"zh": "分析结果", "en": "Analyze"},
+    "step_analyze_desc": {"zh": "查看查询结果与可视化分析图表。",
+                          "en": "View query results and interactive visualizations."},
 }
 
 
