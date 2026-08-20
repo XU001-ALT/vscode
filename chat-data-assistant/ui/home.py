@@ -42,16 +42,10 @@ def render_home():
             )
 
     with right:
-        st.markdown("## About chat-data")
-        st.markdown(
-            """
-            chat-data 是一个面向智能数据分析场景的 AI 数据查询平台，通过自然语言交互方式连接用户与数据库，帮助用户更加高效地探索、查询和分析数据。
-
-            平台结合数据库结构理解、智能查询生成以及数据可视化能力，使用户无需编写复杂 SQL，即可完成从数据查询、结果获取到分析展示的完整流程。
-
-            在 **Home** 页面，用户可以了解平台整体功能、使用流程以及运行环境要求；在 **AI Query** 页面，用户可以通过自然语言提出数据查询需求，系统将根据数据库信息生成查询结果，并提供数据展示与可视化分析；在 **Settings** 页面，用户可以完成平台运行所需的基础配置，包括 API 设置、数据库连接以及 Schema 信息管理。
-            """
-        )
+        st.markdown(f"## {t('about_title')}")
+        st.markdown(t("about_p1"))
+        st.markdown(t("about_p2"))
+        st.markdown(t("about_p3"))
 
     st.markdown("<br>", unsafe_allow_html=True)
 
