@@ -11,13 +11,15 @@ bootstrap.start()
 
 apply_theme()
 
-# 语言切换 + 导航放在顶部一行
-top_col1, top_col2, top_col3 = st.columns([8, 2, 1])
+st.markdown('<div class="main-title">chat-data</div>', unsafe_allow_html=True)
 
-with top_col1:
+# 导航 + 语言切换放在标题下面一行
+nav_col1, nav_col2, nav_col3 = st.columns([8, 2, 1])
+
+with nav_col1:
     page = render_navigation()
 
-with top_col3:
+with nav_col3:
     current_lang = st.session_state.get('lang', 'zh')
     if st.button(t("lang_btn"), key="lang_toggle", help="Switch language"):
         st.session_state['lang'] = 'en' if current_lang == 'zh' else 'zh'

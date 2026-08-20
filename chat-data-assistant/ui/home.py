@@ -9,9 +9,8 @@ def render_home():
     st.markdown(
         f"""
         <div class="cd-hero">
-            <div class="cd-brand">chat-data</div>
-            <h1>{t("home_title")}</h1>
-            <p>{t("home_desc")}</p>
+            <div class="cd-brand" style="font-size:2.8rem;letter-spacing:.08em;">chat-data</div>
+            <p style="font-size:.95rem;opacity:.75;">{t("home_desc")}</p>
         </div>
         """,
         unsafe_allow_html=True,
