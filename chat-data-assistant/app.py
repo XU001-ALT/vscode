@@ -11,7 +11,7 @@ bootstrap.start()
 
 apply_theme()
 
-st.markdown('<div class="main-title">chat-data</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title" style="font-size:2.2rem;">chat-data：智能绘图助手</div>', unsafe_allow_html=True)
 
 # 导航 + 语言切换放在标题下面一行
 nav_col1, nav_col2, nav_col3 = st.columns([8, 2, 1])
