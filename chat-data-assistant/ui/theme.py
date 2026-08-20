@@ -117,8 +117,12 @@ def apply_theme():
         }
 
         /* 隐藏聊天消息的头像图标 */
-        [data-testid="stChatMessageAvatar"] {
+        [data-testid="stChatMessage"] > div:first-child {
             display: none !important;
+            width: 0 !important;
+            padding: 0 !important;
+            min-width: 0 !important;
+            flex: 0 !important;
         }
         </style>
         """,
