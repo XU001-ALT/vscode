@@ -74,6 +74,47 @@ def apply_theme():
         button[kind="primary"] {
             border-radius: 12px;
         }
+
+        .cd-hero {
+            padding: 3.5rem 2.5rem;
+            text-align: center;
+            border-radius: 24px;
+            background: rgba(15, 23, 42, .55);
+            border: 1px solid rgba(148,163,184,.25);
+            margin-bottom: 1rem;
+        }
+
+        .cd-hero .cd-brand {
+            font-size: 1.2rem;
+            letter-spacing: .15em;
+            color: #93c5fd;
+            margin-bottom: 1rem;
+        }
+
+        .cd-hero h1 {
+            font-size: 3rem;
+            margin-bottom: .8rem;
+            color: white;
+        }
+
+        .cd-hero p {
+            color: #cbd5e1;
+            font-size: 1.15rem;
+        }
+
+        .cd-step {
+            min-height: 180px;
+        }
+
+        .cd-number {
+            color: #60a5fa;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .cd-entry {
+            text-align: center;
+        }
         </style>
         """,
         unsafe_allow_html=True,
