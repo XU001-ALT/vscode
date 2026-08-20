@@ -122,11 +122,11 @@ def render():
             role = msg.get('role', 'system')
             content = msg.get('content', '')
             if role == 'user':
-                with st.chat_message("user", avatar=""):
+                with st.chat_message("user"):
                     st.markdown(content)
             elif role == 'system':
-                with st.chat_message("assistant", avatar=""):
+                with st.chat_message("assistant"):
                     st.info(content)
             else:
-                with st.chat_message("assistant", avatar=""):
+                with st.chat_message("assistant"):
                     st.markdown(content)
