@@ -2,6 +2,7 @@ import streamlit as st
 from config import config
 from core.session_state import ensure_defaults
 from core import bootstrap
+from core.translations import t
 from core.secrets import store as secrets_store, remove as secrets_remove, mask_key, TOKEN_KEY, HAS_CUSTOM_KEY
 from db.executor import fetch_full_schema
 from db.connection import db_manager
@@ -41,24 +42,14 @@ def _on_preset_change():
 
 
 def _on_key_input():
-    """API Key 输入回调：同步到服务端私有存储。
-
-    Streamlit 限制：密码输入框的值必须经过 session_state（WebSocket）。
-    我们无法完全避免，但做了以下防护：
-    1. 服务端存储是唯一权威来源（llm_client 从服务端读，不读 session_state）
-    2. UI 中所有展示都用 mask_key() 脱敏
-    3. 用户清空输入时同步清除服务端存储
-    """
     key_value = st.session_state.get("llm_api_key_input", "").strip()
     old_token = st.session_state.get(TOKEN_KEY, "")
 
     if key_value:
-        # 有输入 → 存入服务端，更新令牌
         token = secrets_store(key_value)
         st.session_state[TOKEN_KEY] = token
         st.session_state[HAS_CUSTOM_KEY] = True
     elif old_token:
-        # 用户清空了输入框 → 清除服务端存储
         secrets_remove(old_token)
         st.session_state[TOKEN_KEY] = ""
         st.session_state[HAS_CUSTOM_KEY] = False
@@ -75,24 +66,23 @@ def _get_db_config() -> dict:
 
 
 def _process_schema(raw_text: str) -> bool:
-    """解析、校验、裁剪 schema，存入 session_state。返回是否成功"""
     tables = load_from_text(raw_text)
     ok, errors = validate_schema(tables)
     if not ok:
-        st.error("Schema 校验失败: " + "; ".join(errors))
+        st.error(t("schema_err") + "; ".join(errors))
         return False
     processed = summarize_schema(tables)
     st.session_state['orm_schema'] = processed
-    st.session_state['orm_schema_tables'] = [t.name for t in tables]
+    st.session_state['orm_schema_tables'] = [t_item.name for t_item in tables]
     return True
 
 
 def _render_connected(info: dict):
-    st.success(f"数据库已连接: {info['database']}")
+    st.success(f"{t('db_connected')}: {info['database']}")
     st.caption(f"PostgreSQL {info['version']}")
 
 def _render_connecting():
-    st.info("正在连接数据库…")
+    st.info(t("db_connecting"))
 
 def _render_db_status():
     state = bootstrap.get_state()
@@ -104,33 +94,31 @@ def _render_db_status():
         if info:
             _render_connected(info)
         else:
-            st.success("数据库已连接")
+            st.success(t("db_connected"))
     elif state["last_error"]:
-        st.error("数据库连接失败: " + state["last_error"])
+        st.error(t("db_failed") + ": " + state["last_error"])
     else:
         _render_connecting()
 
 
 def render():
     ensure_defaults()
-    st.markdown('<p class="sidebar-title">Schema 管理</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="sidebar-title">{t("schema_mgmt")}</p>', unsafe_allow_html=True)
     _render_db_status()
 
-    # ── API 配置（用户自定义大模型）：可上下折叠，默认收起 ──
-    with st.expander("API 配置", expanded=False):
-        st.caption("填写后使用你自己的大模型，费用由你承担；留空则使用系统默认配置。")
+    # ── API 配置 ──
+    with st.expander(t("api_config"), expanded=False):
+        st.caption(t("api_config_hint"))
 
-        # 初始化 session_state 中的令牌字段
         if TOKEN_KEY not in st.session_state:
             st.session_state[TOKEN_KEY] = ""
         if HAS_CUSTOM_KEY not in st.session_state:
             st.session_state[HAS_CUSTOM_KEY] = False
 
-        # ── 模型预设选择 ──
         try:
-            preset_idx = _CUSTOM_INDEX  # 默认"自定义…"
+            preset_idx = _CUSTOM_INDEX
             label = st.selectbox(
-                "模型选择",
+                t("model_select"),
                 _PRESET_LABELS,
                 index=preset_idx,
                 key="model_preset_sel",
@@ -138,32 +126,28 @@ def render():
             )
         except Exception:
             label = st.selectbox(
-                "模型选择",
+                t("model_select"),
                 _PRESET_LABELS,
                 key="model_preset_sel",
                 on_change=_on_preset_change,
             )
 
-        # ── API Base URL ──
         st.text_input(
             "API Base URL",
             key="llm_base_url",
             placeholder="https://api.deepseek.com",
         )
 
-        # ── API Key（输入时经过 session_state，但 llm_client 从服务端私有存储读取，不依赖 session_state） ──
         key_is_stored = bool(st.session_state.get(HAS_CUSTOM_KEY))
 
-        # 密钥输入框（密码模式，浏览器端显示为圆点）
         st.text_input(
             "API Key",
             key="llm_api_key_input",
             type="password",
-            placeholder="sk-..." if not key_is_stored else "••••••••（已设置）",
+            placeholder="sk-..." if not key_is_stored else f"••••••••（{t('key_set')}）",
             on_change=_on_key_input,
         )
 
-        # 兼容旧代码：迁移以前存在 llm_api_key 中的值到新安全存储
         old_legacy_key = st.session_state.get("llm_api_key", "").strip()
         if old_legacy_key and not key_is_stored:
             token = secrets_store(old_legacy_key)
@@ -171,86 +155,78 @@ def render():
             st.session_state[HAS_CUSTOM_KEY] = True
             st.session_state["llm_api_key"] = ""
 
-        # 清除按钮
         if key_is_stored:
             from core.secrets import retrieve, mask_key
             token = st.session_state.get(TOKEN_KEY, "")
             actual_key = retrieve(token)
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.caption(f"当前密钥：{mask_key(actual_key)}")
+                st.caption(f"{t('current_key')}：{mask_key(actual_key)}")
             with col2:
-                if st.button("清除", key="clear_key_btn"):
+                if st.button(t("clear"), key="clear_key_btn"):
                     secrets_remove(token)
                     st.session_state[TOKEN_KEY] = ""
                     st.session_state[HAS_CUSTOM_KEY] = False
                     st.session_state["llm_api_key_input"] = ""
                     st.rerun()
 
-        # ── 模型名称 ──
         st.text_input(
-            "模型名称",
+            t("model_name"),
             key="llm_model",
-            placeholder="留空自动选择（如 deepseek-v4-flash / gpt-4o-mini）",
+            placeholder=t("model_name_ph"),
         )
 
-        # ── 动态状态栏 ──
         call_status = st.session_state.get('_llm_call_status')
         call_model = st.session_state.get('_llm_call_model', '')
         call_error = st.session_state.get('_llm_call_error', '')
 
         if not key_is_stored and not config.LLM_API_KEY:
-            # 情况1: 完全没有配置任何 API Key
-            st.warning("未配置 API Key，请填写 API Key 或检查 .env 文件")
+            st.warning(t("no_api_key"))
         elif call_status == 'success':
-            # 情况2: 调用成功
-            model_display = call_model or st.session_state.get('llm_model', '') or '默认模型'
-            st.success(f"✅ 调用成功 — {model_display}")
+            model_display = call_model or st.session_state.get('llm_model', '') or t("default_model")
+            st.success(t("call_ok") + model_display)
         elif call_status == 'error':
-            # 情况3: 调用失败
             error_brief = call_error[:50] + ('...' if len(call_error) > 50 else '')
-            st.error(f"❌ 调用失败 — {error_brief}")
+            st.error(t("call_fail") + error_brief)
         elif key_is_stored:
-            # 情况4: 已配置自定义 Key，但尚未首次调用
-            model_display = st.session_state.get('llm_model', '') or '默认模型'
-            st.info(f"已配置自定义模型 {model_display}，等待首次调用")
+            model_display = st.session_state.get('llm_model', '') or t("default_model")
+            st.info(t("custom_model_info") + model_display + t("awaiting_call"))
         else:
-            # 情况5: 使用 .env 默认配置，尚未调用
-            st.info("当前使用默认模型")
+            st.info(t("using_default"))
 
     st.markdown("---")
-    st.markdown('<p class="sidebar-section">数据使用说明</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="sidebar-section">{t("data_guide")}</p>', unsafe_allow_html=True)
     tables = st.session_state.get('orm_schema_tables', [])
     if tables:
-        with st.expander("各表数据含义（点击展开）", expanded=False):
+        with st.expander(t("table_desc"), expanded=False):
             desc = load_descriptions()
-            for t in tables:
-                d = desc.get(t, "")
+            for tbl in tables:
+                d = desc.get(tbl, "")
                 if d:
-                    st.markdown(f"**{t}** — {d}")
+                    st.markdown(f"**{tbl}** — {d}")
                 else:
-                    st.markdown(f"**{t}**")
+                    st.markdown(f"**{tbl}**")
     else:
-        st.caption("加载 Schema 后可查看各表对应的数据含义")
+        st.caption(t("load_schema_hint"))
 
     st.markdown("---")
-    st.markdown('<p class="sidebar-section">加载 Schema</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="sidebar-section">{t("load_schema")}</p>', unsafe_allow_html=True)
 
     schema_loaded = bool(st.session_state.get('orm_schema_tables'))
 
     if not schema_loaded:
-        if st.button("从数据库拉取 Schema"):
-            with st.spinner("正在拉取表结构..."):
+        if st.button(t("fetch_schema")):
+            with st.spinner(t("fetching")):
                 try:
                     raw_text = fetch_full_schema()
                     if _process_schema(raw_text):
                         n = len(st.session_state.get('orm_schema_tables', []))
-                        st.success(f"已拉取并处理 Schema，共 {n} 张表")
+                        st.success(t("loaded_n") + str(n) + t("tables_unit"))
                 except Exception as e:
-                    st.error(f"拉取失败: {e}")
+                    st.error(t("fetch_fail") + str(e))
 
-    with st.expander("上传 / 重新加载 Schema（仅需一次）", expanded=not schema_loaded):
-        uploaded = st.file_uploader("上传 ORM 文件（Python / JSON / TXT）", type=["py", "json", "txt"], key="orm_uploader")
+    with st.expander(t("upload_schema"), expanded=not schema_loaded):
+        uploaded = st.file_uploader(t("upload_hint"), type=["py", "json", "txt"], key="orm_uploader")
         if uploaded is not None:
             try:
                 content = uploaded.getvalue().decode('utf-8')
@@ -258,5 +234,4 @@ def render():
                 content = str(uploaded.getvalue())
             if _process_schema(content):
                 n = len(st.session_state.get('orm_schema_tables', []))
-                st.success(f"已加载并处理 Schema，共 {n} 张表")
-
+                st.success(t("loaded_n") + str(n) + t("tables_unit"))

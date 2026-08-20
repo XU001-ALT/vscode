@@ -1,13 +1,13 @@
 """聊天面板：消息渲染、用户输入管道（含 Self-Correction 和多轮上下文）。"""
 import streamlit as st
-from core.session_state import ensure_defaults, clear_session, set_llm_call_result
+from core.session_state import ensure_defaults, set_llm_call_result
 from core.chat_history import append_message, get_history
+from core.translations import t
 from ai.text_to_sql import to_sql_with_correction
 from db.executor import execute_sql_safe
 
 
 def _get_effective_model_name() -> str:
-    """获取当前生效的模型名称（用于状态展示）。"""
     try:
         from core.secrets import get_effective_model
         model = get_effective_model()
@@ -17,20 +17,15 @@ def _get_effective_model_name() -> str:
         pass
     try:
         from config import config
-        return config.LLM_MODEL or "默认模型"
+        return config.LLM_MODEL or t("default_model")
     except Exception:
-        return "默认模型"
+        return t("default_model")
 
 
 def _run_pipeline(query: str):
-    """执行完整的 Text-to-SQL → 执行 → Self-Correction 流水线。
-
-    所有异常都在此捕获，确保不会白屏崩溃，而是以聊天消息形式展示。
-    SQL 不展示给顾客，仅通过 meta 存进历史供 LLM 多轮纠错使用。
-    """
     schema_summary = st.session_state.get('orm_schema', '')
     if not schema_summary.strip():
-        append_message('system', "⚠️ 请先在左侧侧边栏加载 Schema（粘贴表结构或从数据库拉取）")
+        append_message('system', t("load_schema_first"))
         return
 
     history = get_history()
@@ -44,58 +39,47 @@ def _run_pipeline(query: str):
             execute_fn=execute_sql_safe,
         )
     except Exception as e:
-        # LLM 调用层面的异常（401、网络超时等），不是 SQL 执行失败
         st.session_state['last_sql'] = None
         st.session_state['last_df'] = None
         error_detail = str(e)
 
-        # 安全过滤：防止 API Key 在错误消息中泄漏
         try:
             from core.secrets import sanitize_error
             error_detail = sanitize_error(error_detail)
         except ImportError:
             pass
 
-        # 记录调用失败
         set_llm_call_result(success=False, model=model_name, error=error_detail[:80])
 
-        # 对常见错误给出中文提示
         if '401' in error_detail or 'Authorization' in error_detail or 'Unauthorized' in error_detail:
-            hint = "🔑 API Key 无效或未配置，请检查侧边栏或 .env 中的 API Key。"
+            hint = t("key_invalid")
         elif 'timeout' in error_detail.lower() or 'timed out' in error_detail.lower():
-            hint = "⏱️ LLM 请求超时，请稍后重试。"
+            hint = t("timeout")
         elif 'Connection' in error_detail or 'connect' in error_detail.lower():
-            hint = "🌐 无法连接到 LLM 服务，请检查网络和 API Base URL。"
+            hint = t("conn_err")
         else:
-            hint = f"❌ 系统错误: {error_detail}"
+            hint = t("sys_err") + error_detail
         append_message('assistant', hint)
         return
 
-    # LLM 调用成功（SQL 生成正常）
     set_llm_call_result(success=True, model=model_name)
-
-    # 始终保存最后一次 SQL
     st.session_state['last_sql'] = sql
 
     if error:
-        # SQL 执行/校验层面的失败（含 Self-Correction 后仍失败）
         st.session_state['last_df'] = None
         append_message('assistant', (
-            f"查询执行失败：{error}\n\n"
-            f"您可以尝试换个问法，或确认问题在已加载的表结构范围内。"
+            t("query_fail") + error +
+            t("query_fail_hint")
         ), sql=sql)
     else:
         st.session_state['last_df'] = df
         row_count = len(df) if df is not None else 0
-        append_message('assistant', f"已返回 {row_count} 行数据。", sql=sql)
-        # 新结果自动聚焦到「图表」Tab（绘图软件的主输出）
-        st.session_state['result_tabs'] = '图表'
-        # 自动推荐图表配置（基于用户问题 + 结果集），失败则回退手动模式
+        append_message('assistant', t("rows_returned") + str(row_count) + t("rows_unit"), sql=sql)
+        st.session_state['result_tabs'] = t("tab_chart")
         try:
             from ai.chart_recommendation import recommend_chart
             rec = recommend_chart(df, query, sql)
             st.session_state['chart_recommendation'] = rec
-            # 每次新查询生成新的 AI 推荐时递增代次标记，result_panel 据此重置「使用 AI 推荐」勾选
             if rec:
                 st.session_state['_rec_gen'] = st.session_state.get('_rec_gen', 0) + 1
         except Exception:
@@ -103,7 +87,6 @@ def _run_pipeline(query: str):
 
 
 def _submit_query(query: str):
-    """提交一条查询：写历史 → 跑流水线 → 重跑页面。"""
     query = query.strip()
     if not query:
         return
@@ -115,34 +98,34 @@ def _submit_query(query: str):
 
 
 def render():
-    """渲染聊天面板：对话在上，输入框固定在底部。"""
     ensure_defaults()
 
-    st.markdown('<p class="chat-title">对话</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="chat-title">{t("chat_title")}</p>', unsafe_allow_html=True)
 
-    # 界面只展示最近一轮对话（完整历史仍保存在 session 中供 LLM 上下文使用），避免消息积累导致界面混乱
-    history = get_history()
-    for msg in history[-2:]:
-        role = msg.get('role', 'system')
-        content = msg.get('content', '')
-        if role == 'user':
-            with st.chat_message("user"):
-                st.markdown(content)
-        elif role == 'system':
-            with st.chat_message("assistant"):
-                st.info(content)
-        else:
-            with st.chat_message("assistant"):
-                st.markdown(content)
+    # 输入框固定在顶部
+    with st.container(key="chat_input_area"):
+        query = st.text_input(
+            t("query"),
+            key="chat_query_input",
+            placeholder=t("query_ph"),
+            label_visibility="collapsed",
+        )
+        if st.button(t("send"), key="send_btn", use_container_width=True):
+            if query and query.strip():
+                _submit_query(query.strip())
 
-    # 输入框（底部，始终可见），右侧并排「清空会话」按钮，整体包进蓝色边框
-    with st.container(border=True, key="query_box"):
-        query_col, clear_col = st.columns([6, 1], vertical_alignment="center")
-        with query_col:
-            query = st.chat_input("请输入查询，例如：查看所有实验数据中温度大于500的记录")
-        with clear_col:
-            if st.button("清空会话", use_container_width=True, key="clear_session_btn"):
-                clear_session()
-                st.rerun()
-    if query:
-        _submit_query(query)
+    # 聊天消息区域（flex:1 撑满剩余空间，溢出滚动）
+    with st.container(key="chat_messages_area"):
+        history = get_history()
+        for msg in history[-2:]:
+            role = msg.get('role', 'system')
+            content = msg.get('content', '')
+            if role == 'user':
+                with st.chat_message("user"):
+                    st.markdown(content)
+            elif role == 'system':
+                with st.chat_message("assistant"):
+                    st.info(content)
+            else:
+                with st.chat_message("assistant"):
+                    st.markdown(content)
