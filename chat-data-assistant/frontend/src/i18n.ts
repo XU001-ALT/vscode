@@ -52,6 +52,42 @@ const dict = {
     zh: '请先在右侧配置区加载 Schema（从数据库拉取或上传）。',
     en: "Load a schema first in the config panel (fetch from database or upload).",
   },
+  querying_hint: {
+    zh: 'AI 正在生成并执行 SQL，请稍候…',
+    en: 'Generating and running SQL, please wait…',
+  },
+
+  // Error codes（后端 error_code → 双语文案；原始错误详情以小字附在下方）
+  err_empty_question: { zh: '请输入查询内容。', en: 'Please enter a query.' },
+  err_no_schema: {
+    zh: '请先在右侧配置区加载 Schema。',
+    en: 'Load a schema in the config panel first.',
+  },
+  err_db_unreachable: {
+    zh: '数据库暂不可用，请稍后重试或联系管理员。',
+    en: 'Database is unreachable. Try again later or contact the admin.',
+  },
+  err_llm_auth: {
+    zh: 'API Key 无效或未配置，请在配置区检查。',
+    en: 'API key is invalid or missing. Check the config panel.',
+  },
+  err_llm_timeout: {
+    zh: 'LLM 请求超时，请稍后重试。',
+    en: 'LLM request timed out. Please try again.',
+  },
+  err_llm_conn: {
+    zh: '无法连接 LLM 服务，请检查网络与 Base URL。',
+    en: 'Cannot reach the LLM service. Check network and Base URL.',
+  },
+  err_sql_failed: {
+    zh: 'SQL 执行失败，可尝试换个问法。',
+    en: 'SQL execution failed. Try rephrasing your question.',
+  },
+  err_no_valid_sql: {
+    zh: '未能生成合法 SQL，请换个问法或确认问题在数据范围内。',
+    en: 'Could not generate valid SQL. Rephrase or check the question scope.',
+  },
+  err_unknown: { zh: '查询出错。', en: 'Query failed.' },
 
   // Config panel
   config_area: { zh: '配置区', en: 'Configuration' },

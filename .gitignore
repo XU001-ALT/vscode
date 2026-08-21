@@ -25,3 +25,6 @@ dist/
 
 # Debug logs
 logs/
+
+# Runtime data (session store)
+chat-data-assistant/data/

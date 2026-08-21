@@ -7,5 +7,6 @@ frontend/node_modules
 *.pyc
 .env
 logs
+data
 .streamlit
 UI_V9_CHANGELOG.md

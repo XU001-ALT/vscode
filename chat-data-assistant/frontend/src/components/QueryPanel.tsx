@@ -1,9 +1,17 @@
 import { useState } from 'react'
-import type { Lang, QueryResult } from '../types'
+import type { ErrorCode, Lang, QueryResult } from '../types'
 import { runQuery } from '../api'
-import { t } from '../i18n'
+import { t, type TKey } from '../i18n'
 import DataTable from './DataTable'
 import ChartView from './ChartView'
+
+function errKey(code?: string | null): TKey {
+  const known: ErrorCode[] = [
+    'empty_question', 'no_schema', 'db_unreachable', 'llm_auth',
+    'llm_timeout', 'llm_conn', 'sql_failed', 'no_valid_sql',
+  ]
+  return known.includes(code as ErrorCode) ? (`err_${code}` as TKey) : 'err_unknown'
+}
 
 interface Props {
   lang: Lang
@@ -27,8 +35,8 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       setTab(r.ok && r.row_count > 0 ? 'chart' : 'data')
     } catch (e) {
       setResult({
-        ok: false, sql: null, error: String(e), columns: [], rows: [],
-        row_count: 0, recommendation: null,
+        ok: false, sql: null, error: String(e), error_code: null,
+        columns: [], rows: [], row_count: 0, recommendation: null,
       })
     } finally {
       setLoading(false)
@@ -82,19 +90,31 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
         </div>
 
         <div className="result-body">
-          {!schemaLoaded && (
+          {loading && (
+            <div className="loading-block">
+              <span className="spinner" />
+              <span>{t('querying_hint', lang)}</span>
+            </div>
+          )}
+
+          {!loading && !schemaLoaded && (
             <div className="msg info">{t('load_schema_first', lang)}</div>
           )}
 
-          {schemaLoaded && !result && (
+          {!loading && schemaLoaded && !result && (
             <div className="msg info">
               {tab === 'data' ? t('no_result', lang) : t('no_chart', lang)}
             </div>
           )}
 
           {result?.sql && <pre className="sql-block">{result.sql}</pre>}
-          {result?.error && <div className="msg error">{result.error}</div>}
-          {result && !result.error && result.row_count === 0 && (
+          {result?.error && !loading && (
+            <div className="msg error">
+              <div>{t(errKey(result.error_code), lang)}</div>
+              <div className="err-detail">{result.error}</div>
+            </div>
+          )}
+          {result && !result.error && result.row_count === 0 && !loading && (
             <div className="msg info">{t('rows_returned', lang)}0{t('rows_unit', lang)}</div>
           )}
 

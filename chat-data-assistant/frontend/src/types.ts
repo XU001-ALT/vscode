@@ -5,9 +5,14 @@ export interface ChartRecommendation {
   reason: string
 }
 
+export type ErrorCode =
+  | 'empty_question' | 'no_schema' | 'db_unreachable' | 'llm_auth'
+  | 'llm_timeout' | 'llm_conn' | 'sql_failed' | 'no_valid_sql' | 'unknown'
+
 export interface QueryResult {
   ok: boolean
   session_id?: string
+  error_code?: string | null
   sql: string | null
   error: string | null
   columns: string[]

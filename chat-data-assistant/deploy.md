@@ -74,6 +74,9 @@ journalctl -u chat-data -f
 
 特性：开机自启、崩溃 5 秒后自动拉起、2 个 worker 进程。
 
+> 会话数据存放在 `data/sessions.sqlite3`（SQLite，多 worker 共享，自动创建）。
+> Docker 部署时如需会话持久化，可加 `-v ./data:/app/data` 挂载该目录。
+
 ## 五、方式 C：Docker
 
 ```bash
