@@ -1,4 +1,4 @@
-streamlit==1.60.0
+# ── 通用后端依赖（Streamlit 旧版 + FastAPI 新版共用）──
 pandas==3.0.5
 sqlalchemy==2.0.51
 psycopg2-binary==2.9.12
@@ -6,3 +6,10 @@ plotly==6.9.0
 openai==2.48.0
 python-dotenv==1.2.2
 httpx==0.28.1
+
+# ── Streamlit 旧版界面 ──
+streamlit==1.60.0
+
+# ── FastAPI 新版界面（api/）──
+fastapi>=0.110
+uvicorn[standard]>=0.29

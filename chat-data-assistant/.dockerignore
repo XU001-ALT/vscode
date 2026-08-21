@@ -1,0 +1,11 @@
+.git
+.venv
+.venv-1
+venv
+frontend/node_modules
+**/__pycache__
+*.pyc
+.env
+logs
+.streamlit
+UI_V9_CHANGELOG.md
