@@ -1,5 +1,6 @@
 @echo off
 rem Chat Data 一键启动（Windows）
+chcp 65001 >nul
 cd /d "%~dp0"
 
 if not exist ".env" (
