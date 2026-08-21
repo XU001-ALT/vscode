@@ -107,7 +107,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
             </div>
           )}
 
-          {result?.sql && <pre className="sql-block">{result.sql}</pre>}
           {result?.error && !loading && (
             <div className="msg error">
               <div>{t(errKey(result.error_code), lang)}</div>
