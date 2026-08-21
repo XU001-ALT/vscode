@@ -60,36 +60,46 @@ def _get_effective_config() -> tuple[str, str, str, str]:
     return api_key, provider, base_url, model
 
 
+def _strip_code_fence(block: str) -> str:
+    """去掉代码块首行的语言标签（sql/python 等）。"""
+    lines = block.strip().split("\n", 1)
+    if lines:
+        tag = lines[0].strip().lower().rstrip("`")
+        if not tag or tag.isalpha():
+            return lines[1].strip() if len(lines) > 1 else ""
+    return block.strip()
+
+
 def _normalize_response_text(text: str) -> str:
     """从 LLM 回复中提取纯 SQL 文本。
 
     处理策略:
-    1. 如果包含 ``` 代码块，优先取第一个代码块内容
+    1. 如果包含 ``` 代码块，依次检查每个代码块（含末尾未闭合的块），
+       取第一个含 SELECT/WITH 等只读语句的块——避免模型先输出说明性
+       代码块时取错块，或输出被截断时取到残片
     2. 去掉代码块的语言标签（sql/python 等）
-    3. 如果剩余内容以 SELECT/WITH 等开头，直接使用
+    3. 从首个以 SELECT/WITH 等开头的行开始截取
     """
     text = text.strip()
 
     if "```" in text:
         pieces = text.split("```")
-        if len(pieces) >= 3:
-            inner = pieces[1].strip()
-        else:
-            inner = pieces[-1].strip()
+        # 成对代码块的内容位于奇数下标；未闭合的最后一个块同样是奇数下标
+        candidates = [_strip_code_fence(pieces[i]) for i in range(1, len(pieces), 2)]
     else:
-        inner = text
+        candidates = [_strip_code_fence(text)]
 
-    lines = inner.split("\n", 1)
-    if lines:
-        tag = lines[0].strip().lower().rstrip("`")
-        if not tag or tag.isalpha():
-            inner = lines[1].strip() if len(lines) > 1 else ""
+    for inner in candidates:
+        m = _SQL_START_RE.search(inner)
+        if m:
+            return inner[m.start():].strip()
 
-    m = _SQL_START_RE.search(inner)
+    # 没有任何代码块包含只读语句：回退为对整段文本按原逻辑处理
+    fallback = _strip_code_fence(text)
+    m = _SQL_START_RE.search(fallback)
     if m:
-        inner = inner[m.start():]
-
-    return inner.strip()
+        fallback = fallback[m.start():]
+    return fallback.strip()
 
 
 def _post_openai_compatible(
@@ -186,7 +196,17 @@ def call_llm(
         api_key=api_key,
         base_url=base_url,
     )
-    content = data["choices"][0]["message"]["content"]
+    choice = (data.get("choices") or [{}])[0]
+    if choice.get("finish_reason") == "length":
+        # 输出被截断：与其拿半截 SQL 去执行再触发多轮纠错（更慢更贵），
+        # 不如快速失败并给出可操作提示
+        raise RuntimeError(
+            "LLM 输出因长度限制被截断，未能生成完整 SQL。"
+            "请把问题拆得更具体一些，或在配置中增大 LLM_MAX_TOKENS。"
+        )
+    content = (choice.get("message") or {}).get("content")
+    if not content or not content.strip():
+        raise RuntimeError("LLM 返回了空内容，请稍后重试或检查模型配置。")
     return _normalize_response_text(content)
 
 
