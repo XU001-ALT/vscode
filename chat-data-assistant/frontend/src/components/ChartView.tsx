@@ -12,6 +12,14 @@ interface Props {
 
 type ChartType = 'line' | 'bar' | 'scatter' | 'pie'
 
+// 品牌色板：科技蓝 → 青 → 紫，与界面深蓝主题呼应
+const PALETTE = [
+  '#4f8ef7', '#2dd4bf', '#a78bfa', '#fbbf24',
+  '#fb7185', '#34d399', '#60a5fa', '#f472b6',
+]
+
+const FONT = 'Microsoft YaHei'
+
 function isNumericCol(rows: unknown[][], idx: number): boolean {
   return rows.some(r => r[idx] != null) &&
     rows.every(r => r[idx] == null || typeof r[idx] === 'number')
@@ -21,21 +29,37 @@ function toValues(rows: unknown[][], idx: number): (number | null)[] {
   return rows.map(r => (r[idx] == null ? null : Number(r[idx])))
 }
 
-const DARK_LAYOUT = {
-  template: 'plotly_dark' as const,
-  font: { family: 'Microsoft YaHei' },
-  paper_bgcolor: 'rgba(0,0,0,0)',
-  plot_bgcolor: 'rgba(20,30,60,0.6)',
-  legend: { orientation: 'h' as const, y: 1.12, x: 0.02 },
-  margin: { l: 46, r: 20, t: 30, b: 40 },
-}
-
-const LIGHT_LAYOUT = {
-  font: { family: 'Microsoft YaHei', color: '#1a2437' },
-  paper_bgcolor: 'rgba(0,0,0,0)',
-  plot_bgcolor: 'rgba(0,0,0,0)',
-  legend: { orientation: 'h' as const, y: 1.12, x: 0.02 },
-  margin: { l: 46, r: 20, t: 30, b: 40 },
+function buildLayout(lang: Lang): Record<string, unknown> {
+  const dark = lang === 'zh'
+  return {
+    colorway: PALETTE,
+    font: { family: FONT, color: dark ? '#dbe4ff' : '#1a2437', size: 12.5 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: dark ? 'rgba(20,30,60,0.45)' : 'rgba(0,0,0,0)',
+    legend: { orientation: 'h', y: 1.14, x: 0, font: { size: 12 } },
+    margin: { l: 52, r: 24, t: 34, b: 44 },
+    transition: { duration: 350, easing: 'cubic-in-out' },
+    hoverlabel: {
+      bgcolor: dark ? 'rgba(17,24,48,0.94)' : 'rgba(255,255,255,0.97)',
+      bordercolor: dark ? 'rgba(148,163,184,0.45)' : '#cbd5e1',
+      font: { family: FONT, size: 12.5, color: dark ? '#e5ecff' : '#1a2437' },
+    },
+    xaxis: {
+      gridcolor: dark ? 'rgba(148,163,184,0.10)' : 'rgba(15,23,42,0.07)',
+      linecolor: dark ? 'rgba(148,163,184,0.30)' : 'rgba(15,23,42,0.22)',
+      zeroline: false,
+      tickfont: { size: 11.5 },
+      automargin: true,
+    },
+    yaxis: {
+      gridcolor: dark ? 'rgba(148,163,184,0.10)' : 'rgba(15,23,42,0.07)',
+      linecolor: dark ? 'rgba(148,163,184,0.30)' : 'rgba(15,23,42,0.22)',
+      zeroline: false,
+      tickfont: { size: 11.5 },
+      automargin: true,
+    },
+    bargap: 0.35,
+  }
 }
 
 export default function ChartView({ columns, rows, recommendation, lang }: Props) {
@@ -89,7 +113,7 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
 
     const xi = columns.indexOf(x)
     const layout: Record<string, unknown> = {
-      ...(lang === 'zh' ? DARK_LAYOUT : LIGHT_LAYOUT),
+      ...buildLayout(lang),
       showlegend: ys.length > 1 || chart === 'pie',
     }
     let data: unknown[]
@@ -100,7 +124,13 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
         type: 'pie',
         labels: rows.map(r => String(r[xi] ?? '')),
         values: toValues(rows, vi),
+        hole: 0.55,
+        marker: { colors: PALETTE, line: { color: 'rgba(0,0,0,0)', width: 0 } },
         textinfo: 'label+percent',
+        textposition: 'outside',
+        textfont: { family: FONT, size: 11.5 },
+        automargin: true,
+        hovertemplate: '%{label}<br>%{value} (%{percent})<extra></extra>',
       }]
     } else {
       data = ys.map(y => ({
@@ -109,10 +139,24 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
         x: rows.map(r => r[xi]),
         y: toValues(rows, columns.indexOf(y)),
         name: y,
+        ...(chart === 'line'
+          ? {
+              line: { shape: 'spline', smoothing: 0.75, width: 2.5 },
+              marker: { size: 6 },
+            }
+          : chart === 'scatter'
+            ? { marker: { size: 7, opacity: 0.85 } }
+            : {}),
+        hovertemplate: `%{x} · ${y}: %{y}<extra></extra>`,
       }))
     }
 
-    Plotly.react(el, data, layout, { responsive: true, displayModeBar: false })
+    Plotly.react(el, data, layout, {
+      responsive: true,
+      displayModeBar: 'hover',
+      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+      toImageButtonOptions: { format: 'png', scale: 2, filename: 'chat-data-chart' },
+    })
     return () => Plotly.purge(el)
   }, [columns, rows, recommendation, useRec, chartType, xCol, yCols, pieName, pieValue, lang])
 
@@ -188,7 +232,7 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
         </div>
       )}
 
-      <div ref={chartRef} style={{ width: '100%', minHeight: 320 }} />
+      <div ref={chartRef} style={{ width: '100%', height: 'clamp(320px, 56vh, 600px)' }} />
     </div>
   )
 }
