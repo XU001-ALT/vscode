@@ -406,22 +406,25 @@ def build_chart_recommendation_prompt(
 ## 要求
 请用以下 JSON 格式输出（不要其他内容）:
 ```json
-{{"chart_type": "line|bar|scatter|pie",
- "x_col": "列名",
- "y_col": "列名",
+{{"chart_type": "line|area|bar|scatter|pie|histogram",
+ "x_col": "列名（histogram 时填数值列名）",
+ "y_col": "列名（histogram 时留空字符串）",
  "reason": "推荐理由（中文，一句话）"}}
 ```
 
 ## 图表类型选择指南
 - line: 时间/序号趋势（X 为时间或有序类别，Y 为数值）
+- area: 累计量/趋势幅度（同 line，强调体量感）
 - bar: 分类对比（X 为类别，Y 为数值）
 - scatter: 双数值列相关性（X、Y 都应为数值）
 - pie: 占比/比例数据（X 为类别，Y 为数值）
+- histogram: 单个数值列的分布/区间集中情况（x_col 填该数值列，y_col 留空）
 
 ## 硬性约束
 1. x_col 和 y_col 必须是上面列信息中真实存在的列名
-2. 除 pie 外，y_col 必须是"数值"类型列
+2. 除 pie 和 histogram 外，y_col 必须是"数值"类型列
 3. pie 的 x_col 唯一值数不能超过 {PIE_MAX_CATEGORIES} 个
-4. x_col 与 y_col 不能相同
+4. 除 histogram 外，x_col 与 y_col 不能相同
+5. 用户问题关注"分布""集中在什么范围""区间"时优先 histogram
 """
 

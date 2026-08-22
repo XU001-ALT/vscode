@@ -15,7 +15,7 @@ import pandas as pd
 from .llm_client import call_llm_raw
 from .prompts import build_chart_recommendation_prompt, PIE_MAX_CATEGORIES
 
-VALID_CHART_TYPES = {"line", "bar", "scatter", "pie"}
+VALID_CHART_TYPES = {"line", "bar", "scatter", "pie", "area", "histogram"}
 
 
 def _extract_json(text: str) -> dict | None:
@@ -77,7 +77,9 @@ def _normalize_rec(data: dict) -> dict | None:
     x_col = str(data.get("x_col", "")).strip()
     y_col = str(data.get("y_col", "")).strip()
     reason = str(data.get("reason", "")).strip()
-    if not chart_type or not x_col or not y_col:
+    if not chart_type or not x_col:
+        return None
+    if not y_col and chart_type != "histogram":
         return None
     return {"chart_type": chart_type, "x_col": x_col, "y_col": y_col, "reason": reason}
 
@@ -89,9 +91,16 @@ def _valid_rec(df: pd.DataFrame, rec: dict) -> bool:
 
     if chart_type not in VALID_CHART_TYPES:
         return False
+    if x not in df.columns:
+        return False
+
+    if chart_type == "histogram":
+        # 直方图：单个数值列的分布，y_col 不使用
+        return _is_scalar_col(df, x) and _is_numeric_col(df, x)
+
     if x == y:
         return False
-    if x not in df.columns or y not in df.columns:
+    if y not in df.columns:
         return False
     # 坐标轴不能用 jsonb/dict/list 列（渲染成字符串无意义）
     if not _is_scalar_col(df, x) or not _is_scalar_col(df, y):
@@ -135,7 +144,8 @@ def _fallback_recommendation(df: pd.DataFrame) -> dict | None:
         return {"chart_type": "scatter", "x_col": numeric[0], "y_col": numeric[1],
                 "reason": "自动选择：双数值列，用散点图查看相关性。"}
 
-    return None
+    return {"chart_type": "histogram", "x_col": numeric[0], "y_col": "",
+            "reason": "自动选择：单一数值列，用直方图查看分布。"}
 
 
 def recommend_chart(df, user_query: str, sql: str) -> dict | None:

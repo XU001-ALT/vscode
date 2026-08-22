@@ -1,5 +1,5 @@
 export interface ChartRecommendation {
-  chart_type: 'line' | 'bar' | 'scatter' | 'pie'
+  chart_type: 'line' | 'bar' | 'scatter' | 'pie' | 'area' | 'histogram'
   x_col: string
   y_col: string
   reason: string

@@ -20,14 +20,6 @@ export function getBootstrapState(): Promise<BootstrapState> {
   return request('/api/bootstrap')
 }
 
-export function fetchSchemaFromDb(): Promise<{ ok: boolean; error: string; tables: string[] }> {
-  return request('/api/schema/fetch', { method: 'POST' })
-}
-
-export function uploadSchema(content: string): Promise<{ ok: boolean; error: string; tables: string[] }> {
-  return request('/api/schema/upload', { method: 'POST', body: JSON.stringify({ content }) })
-}
-
 export function getSchemaDescriptions(): Promise<Record<string, string>> {
   return request('/api/schema/descriptions')
 }

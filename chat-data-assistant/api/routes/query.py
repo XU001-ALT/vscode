@@ -32,7 +32,7 @@ def query(req: QueryRequest):
     schema_summary, _ = get_schema()
     if not schema_summary.strip():
         return {"ok": False, "error_code": "no_schema",
-                "error": "请先在配置区加载 Schema（从数据库拉取或上传）",
+                "error": "数据库表结构尚未就绪，系统正在连接数据库，请稍后重试",
                 "sql": None, "columns": [], "rows": [], "row_count": 0,
                 "recommendation": None}
 

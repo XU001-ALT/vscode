@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { ErrorCode, Lang, QueryResult } from '../types'
 import { runQuery } from '../api'
 import { t, type TKey } from '../i18n'
-import DataTable from './DataTable'
 import ChartView from './ChartView'
 
 function errKey(code?: string | null): TKey {
@@ -23,7 +22,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
-  const [tab, setTab] = useState<'data' | 'chart'>('data')
 
   async function submit() {
     const q = question.trim()
@@ -32,7 +30,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
     try {
       const r = await runQuery(sessionId, q)
       setResult(r)
-      setTab(r.ok && r.row_count > 0 ? 'chart' : 'data')
     } catch (e) {
       setResult({
         ok: false, sql: null, error: String(e), error_code: null,
@@ -42,24 +39,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       setLoading(false)
       setQuestion('')
     }
-  }
-
-  function exportCsv() {
-    if (!result?.columns.length) return
-    const esc = (v: unknown) => {
-      const s = v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v)
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-    }
-    const lines = [
-      result.columns.map(esc).join(','),
-      ...result.rows.map(r => r.map(esc).join(',')),
-    ]
-    const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = 'query_result.csv'
-    a.click()
-    URL.revokeObjectURL(a.href)
   }
 
   return (
@@ -80,15 +59,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       </div>
 
       <div className="result-area">
-        <div className="tabs">
-          <button className={tab === 'data' ? 'active' : ''} onClick={() => setTab('data')}>
-            {t('tab_data', lang)}
-          </button>
-          <button className={tab === 'chart' ? 'active' : ''} onClick={() => setTab('chart')}>
-            {t('tab_chart', lang)}
-          </button>
-        </div>
-
         <div className="result-body">
           {loading && (
             <div className="loading-block">
@@ -102,9 +72,7 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           )}
 
           {!loading && schemaLoaded && !result && (
-            <div className="msg info">
-              {tab === 'data' ? t('no_result', lang) : t('no_chart', lang)}
-            </div>
+            <div className="msg info">{t('no_chart', lang)}</div>
           )}
 
           {result?.error && !loading && (
@@ -118,27 +86,20 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           )}
 
           {result && result.columns.length > 0 && (
-            tab === 'data' ? (
-              <DataTable columns={result.columns} rows={result.rows} />
-            ) : (
-              <ChartView
-                columns={result.columns}
-                rows={result.rows}
-                recommendation={result.recommendation}
-                lang={lang}
-              />
-            )
+            <ChartView
+              columns={result.columns}
+              rows={result.rows}
+              recommendation={result.recommendation}
+              lang={lang}
+            />
           )}
         </div>
 
         {result && result.columns.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+          <div style={{ marginTop: 10 }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
               {t('rows_returned', lang)}{result.row_count}{t('rows_unit', lang)}
             </span>
-            <button className="export-btn" onClick={exportCsv} style={{ marginTop: 0 }}>
-              {t('export_csv', lang)}
-            </button>
           </div>
         )}
       </div>

@@ -147,24 +147,14 @@ body {
 }
 
 /* ── 介绍栏 ── */
-.intro {
+.intro-body {
   padding: 16px 18px;
 }
 .intro p { color: var(--text-dim); font-size: 0.95rem; }
-.intro .intro-head {
-  font-size: 1.6rem;
+.intro .intro-brand {
+  font-size: 1.18rem;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 8px;
-}
-.intro .intro-badge {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  color: var(--accent);
-  font-size: 0.8rem;
-  margin-bottom: 14px;
 }
 
 /* ── 对话绘图区 ── */
@@ -203,26 +193,6 @@ body {
   display: flex;
   flex-direction: column;
   padding: 12px 18px 16px;
-}
-
-.tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.tabs button {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  padding: 6px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.88rem;
-}
-.tabs button.active {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
 }
 
 .result-body {
@@ -268,29 +238,6 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-table.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-.data-table th, .data-table td {
-  border-bottom: 1px solid var(--border);
-  padding: 7px 10px;
-  text-align: left;
-  white-space: nowrap;
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.data-table th {
-  position: sticky;
-  top: 0;
-  background: var(--panel-solid);
-  color: var(--accent);
-  font-weight: 600;
-}
-.data-table tr:hover td { background: var(--hover); }
-
 .chart-controls {
   display: flex;
   flex-wrap: wrap;
@@ -317,19 +264,6 @@ table.data-table {
   color: var(--accent);
   margin-bottom: 8px;
 }
-
-.export-btn {
-  align-self: flex-start;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  border-radius: 8px;
-  padding: 5px 14px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  margin-top: 10px;
-}
-.export-btn:hover { background: var(--hover); }
 
 /* ── 配置区（折叠面板） ── */
 .config-section {

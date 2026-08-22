@@ -45,7 +45,6 @@ export default function App() {
             lang={lang}
             sessionId={sessionId}
             boot={boot}
-            onSchemaChanged={refreshBoot}
           />
         </section>
       </div>

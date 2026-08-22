@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { BootstrapState, Lang, LlmConfig } from '../types'
-import { clearLlmConfig, fetchSchemaFromDb, getLlmConfig, getSchemaDescriptions, setLlmConfig, uploadSchema } from '../api'
+import { clearLlmConfig, getLlmConfig, getSchemaDescriptions, setLlmConfig } from '../api'
 import { t } from '../i18n'
 
 interface Props {
   lang: Lang
   sessionId: string | null
   boot: BootstrapState | null
-  onSchemaChanged: () => void
 }
 
 const MODEL_PRESETS = [
@@ -38,17 +37,14 @@ function Section({ title, children, defaultOpen = false }: {
   )
 }
 
-export default function ConfigPanel({ lang, sessionId, boot, onSchemaChanged }: Props) {
+export default function ConfigPanel({ lang, sessionId, boot }: Props) {
   const [llm, setLlm] = useState<LlmConfig | null>(null)
   const [preset, setPreset] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [model, setModel] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [savedFlash, setSavedFlash] = useState(false)
-  const [fetching, setFetching] = useState(false)
-  const [schemaMsg, setSchemaMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [descs, setDescs] = useState<Record<string, string>>({})
-  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getSchemaDescriptions().then(setDescs).catch(console.error)
@@ -88,34 +84,6 @@ export default function ConfigPanel({ lang, sessionId, boot, onSchemaChanged }: 
     await clearLlmConfig(sessionId)
     const cfg = await getLlmConfig(sessionId)
     setLlm(cfg)
-  }
-
-  async function doFetchSchema() {
-    setFetching(true)
-    setSchemaMsg(null)
-    try {
-      const r = await fetchSchemaFromDb()
-      setSchemaMsg(r.ok
-        ? { ok: true, text: `${t('loaded_tables', lang)}${r.tables.join(', ')}` }
-        : { ok: false, text: t('schema_err', lang) + r.error })
-      if (r.ok) onSchemaChanged()
-    } catch (e) {
-      setSchemaMsg({ ok: false, text: String(e) })
-    } finally {
-      setFetching(false)
-    }
-  }
-
-  async function onUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const content = await file.text()
-    const r = await uploadSchema(content)
-    setSchemaMsg(r.ok
-      ? { ok: true, text: `${t('loaded_tables', lang)}${r.tables.join(', ')}` }
-      : { ok: false, text: t('schema_err', lang) + r.error })
-    if (r.ok) onSchemaChanged()
-    e.target.value = ''
   }
 
   const db = boot?.db
@@ -190,30 +158,6 @@ export default function ConfigPanel({ lang, sessionId, boot, onSchemaChanged }: 
               {d ? ` — ${d}` : ''}
             </div>
           ))}
-        </Section>
-
-        <Section title={t('schema_mgmt', lang)} defaultOpen>
-          <div className="btn-row" style={{ marginBottom: 10 }}>
-            <button className="btn primary" onClick={doFetchSchema} disabled={fetching}>
-              {fetching ? t('fetching', lang) : t('fetch_schema', lang)}
-            </button>
-            <button className="btn" onClick={() => fileRef.current?.click()}>
-              {t('upload_schema', lang)}
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".py,.json,.txt"
-              style={{ display: 'none' }}
-              onChange={onUploadFile}
-            />
-          </div>
-          <div style={{ fontSize: '0.78rem' }}>{t('upload_hint', lang)}</div>
-          {schemaMsg && (
-            <div className={schemaMsg.ok ? 'hint-ok' : 'hint-err'} style={{ marginTop: 8 }}>
-              {schemaMsg.text}
-            </div>
-          )}
         </Section>
     </div>
   )
