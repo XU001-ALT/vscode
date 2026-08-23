@@ -1,3 +1,8 @@
+# 数据库过载（连接池耗尽）错误标记。
+# ai/text_to_sql 据此跳过无意义的 LLM 纠错重试；executor 负责抛出该标记。
+DB_BUSY_MARKER = "连接池已满"
+
+
 class DatabaseError(Exception):
     """数据库基础异常"""
     pass

@@ -7,7 +7,10 @@ export interface ChartRecommendation {
 
 export type ErrorCode =
   | 'empty_question' | 'no_schema' | 'db_unreachable' | 'llm_auth'
-  | 'llm_timeout' | 'llm_conn' | 'sql_failed' | 'no_valid_sql' | 'unknown'
+  | 'llm_timeout' | 'llm_conn' | 'sql_failed' | 'no_valid_sql' | 'server_busy'
+  | 'unknown'
+
+export type QueryIntent = 'chart' | 'data' | 'chat'
 
 export interface QueryResult {
   ok: boolean
@@ -19,6 +22,8 @@ export interface QueryResult {
   rows: unknown[][]
   row_count: number
   recommendation: ChartRecommendation | null
+  answer?: string | null   // chat 回应或 data 模式的 AI 文字解读
+  intent?: QueryIntent | null
 }
 
 export interface DbStatus {

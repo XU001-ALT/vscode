@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import QueuePool
 import sys
+import threading
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -57,10 +58,16 @@ def make_engine(
 
 
 class DatabaseManager:
-    """数据库连接管理器（单例）"""
+    """数据库管理器（单例，线程安全）
+
+    并发说明：引擎的创建/销毁由 _lock 保护，避免两个线程同时看到
+    _engine=None 而各自创建引擎（其中一个会被覆盖泄漏）。
+    引擎本身（连接池）是线程安全的，可被多请求并发使用。
+    """
 
     _instance = None
     _engine: Engine = None
+    _lock = threading.Lock()
 
     def __new__(cls):
         if cls._instance is None:
@@ -69,21 +76,25 @@ class DatabaseManager:
 
     def connect(self) -> Engine:
         """获取或创建引擎"""
-        if self._engine is None:
-            self._engine = make_engine()
-        return self._engine
+        with self._lock:
+            if self._engine is None:
+                self._engine = make_engine()
+            return self._engine
 
     def connect_with_config(self, host: str, port: int, dbname: str, user: str, password: str) -> Engine:
         """使用指定配置关闭旧连接并创建新引擎"""
-        self.close()
-        self._engine = make_engine(host=host, port=port, dbname=dbname, user=user, password=password)
-        return self._engine
+        with self._lock:
+            if self._engine is not None:
+                self._engine.dispose()
+            self._engine = make_engine(host=host, port=port, dbname=dbname, user=user, password=password)
+            return self._engine
 
     def close(self):
         """关闭引擎，释放连接池"""
-        if self._engine:
-            self._engine.dispose()
-            self._engine = None
+        with self._lock:
+            if self._engine is not None:
+                self._engine.dispose()
+                self._engine = None
 
     def health_check(self) -> bool:
         """健康检查：测试数据库是否可达"""

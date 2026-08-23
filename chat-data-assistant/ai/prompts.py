@@ -24,8 +24,14 @@ SYSTEM_PROMPT = """你是一名 PostgreSQL 数据库专家助手，专门负责�
 1. **只读原则**: 只生成 SELECT、WITH (CTE)、EXPLAIN、SHOW、DESCRIBE 查询。绝对禁止 DROP、DELETE、TRUNCATE、ALTER、INSERT、UPDATE、CREATE、GRANT、REVOKE、EXECUTE 等写操作。
 2. **Schema 限定**: 只使用下方 Schema 中列出的表和列。不允许臆造表名或列名。
 3. **安全编码**: 字符串值使用单引号；LIKE 模式中百分号用单引号包裹；避免 SQL 注入。
-4. **回答格式**: 每个回复中，SQL 必须放在 ```sql ... ``` 代码块内，且必须是完整可执行的一条语句（包含全部 JOIN 条件、WHERE、GROUP BY 及结尾）。先输出完整 SQL 代码块，之后最多用一两句话简短说明；不要在 SQL 之前写分析过程。如果问题不需要 SQL（如闲聊或澄清），则在文本中直接说明。
-5. **冷启动**: 如果根据提供的 Schema 无法回答问题，请诚实地说"无法从当前数据库中找到相关数据"，并建议用户补充信息。
+4. **意图标注（最重要）**: 每个回复的第一行必须是意图标记，只能从以下三选一：
+   - `INTENT: chart` —— 用户希望以图表形式查看（画图、绘图、趋势图、占比饼图、分布直方图等可视化需求）
+   - `INTENT: data` —— 用户想知道数据本身（统计数字、有多少条、平均值、明细记录列表等事实性问题）
+   - `INTENT: chat` —— 寒暄闲聊、与数据库数据无关的问题，或根据 Schema 判断数据库中无法回答的问题
+   不确定时优先判为 data；只有明确提到绘图/图表类词汇或明显需要视觉呈现时才判为 chart。
+5. **回答格式**: 意图标记之后：
+   - chart / data 意图：SQL 必须放在 ```sql ... ``` 代码块内，且必须是完整可执行的一条语句（包含全部 JOIN 条件、WHERE、GROUP BY 及结尾）。先输出完整 SQL 代码块，之后最多用一两句话简短说明；不要在 SQL 之前写分析过程。
+   - chat 意图：不要输出 SQL，直接在标记后用简短的友好文字回应；若是超范围问题，请说明"当前数据库中没有相关数据"，并可列举数据库中已有的表主题供用户参考。
 6. **中文回复**: 除 SQL 代码外，所有解释和说明使用中文。
 
 ## 多表 JOIN 策略（非常重要！）
@@ -91,6 +97,7 @@ Table dsc: DSC 差示扫描量热
   created_at timestamp
 
 输出:
+INTENT: data
 ```sql
 SELECT id, sample_name, peak_temp, onset_temp, heating_rate, activation_energy
 FROM dsc
@@ -98,7 +105,7 @@ WHERE onset_temp > 500
 ORDER BY onset_temp DESC
 LIMIT 100;
 ```
-说明: 筛选起始温度大于 500°C 的 DSC 实验，按起始温度降序排列，限制返回 100 条。
+说明: 用户想了解符合条件的记录明细，判为 data。筛选起始温度大于 500°C 的 DSC 实验，按起始温度降序排列，限制返回 100 条。
 
 ### 示例 2（两表 JOIN — 通过外键关联）
 用户问题: 查询每种工艺对应的循环寿命测试结果，需要工艺类型和循环圈数
@@ -120,6 +127,7 @@ Table cycle: 循环寿命测试
   cycle_count integer
 
 输出:
+INTENT: data
 ```sql
 SELECT p.process_type,
        c.temperature,
@@ -160,6 +168,7 @@ Table cycle: 循环寿命测试
   cycle_count integer
 
 输出:
+INTENT: data
 ```sql
 SELECT p.id AS process_id,
        p.process_type,
@@ -204,6 +213,7 @@ Table catalysis: 催化改性实验
   catalyst_name text
 
 输出:
+INTENT: data
 ```sql
 SELECT p.process_type,
        a.alloy_name,
@@ -220,6 +230,39 @@ ORDER BY avg_cycle_count DESC
 LIMIT 50;
 ```
 说明: 四表联查，process → alloying 用 INNER JOIN（只统计有合金数据的），cycle/catalysis 用 LEFT JOIN（可能没有），用 COUNT(DISTINCT) 避免重复计数。
+
+### 示例 5（绘图意图）
+用户问题: 画一张对比各种工艺类型平均循环寿命的柱状图
+Schema:
+Table process: 工艺主表
+  id integer
+  process_type text
+Table cycle: 循环寿命测试
+  id integer
+  process_id integer ← FK
+  cycle_count integer
+
+输出:
+INTENT: chart
+```sql
+SELECT p.process_type, ROUND(AVG(c.cycle_count), 2) AS avg_cycle_count
+FROM process p
+INNER JOIN cycle c ON c.process_id = p.id
+WHERE p.process_type IS NOT NULL AND c.cycle_count IS NOT NULL
+GROUP BY p.process_type
+ORDER BY avg_cycle_count DESC;
+```
+说明: 用户明确要求绘图，判为 chart。聚合出绘图所需的分类 + 数值两列即可。
+
+### 示例 6（闲聊/超范围意图）
+用户问题: 你好，今天天气怎么样？
+Schema:
+Table dsc: DSC 差示扫描量热
+  id integer
+
+输出:
+INTENT: chat
+你好！我是数据库助手，只能帮你查询和解读数据库中的数据，比如 DSC 实验记录。关于天气的问题我无法回答，你可以试试问我"数据库里有多少条实验记录"。
 """
 
 # ============================================================
@@ -270,8 +313,16 @@ CORRECTION_PROMPT_TEMPLATE = """你之前为以下问题生成了 SQL，但执�
 #  Prompt 构建函数
 # ============================================================
 
-def build_system_prompt() -> str:
-    """返回纯 system prompt（不含 schema，schema 动态注入 user prompt）"""
+def build_system_prompt(lang: str = "zh") -> str:
+    """返回 system prompt（不含 schema，schema 动态注入 user prompt）。
+
+    lang 控制说明文字语言：zh=中文（默认），en=英文界面时说明文字用英文。
+    """
+    if lang == "en":
+        return SYSTEM_PROMPT.replace(
+            "6. **中文回复**: 除 SQL 代码外，所有解释和说明使用中文。",
+            "6. **Language**: All explanations and chat replies must be in English; only SQL code stays as-is.",
+        )
     return SYSTEM_PROMPT
 
 
@@ -426,5 +477,59 @@ def build_chart_recommendation_prompt(
 3. pie 的 x_col 唯一值数不能超过 {PIE_MAX_CATEGORIES} 个
 4. 除 histogram 外，x_col 与 y_col 不能相同
 5. 用户问题关注"分布""集中在什么范围""区间"时优先 histogram
+"""
+
+
+# ============================================================
+#  结果总结（问数模式 INTENT: data）
+# ============================================================
+
+def build_result_summary_prompt(
+    user_query: str,
+    sql: str,
+    columns: list[str],
+    rows_preview_lines: str,
+    row_count: int,
+    lang: str = "zh",
+) -> str:
+    """构建结果解读 prompt（INTENT: data 时把查询结果转成文字结论）。
+
+    Args:
+        user_query: 用户原始问题
+        sql: 已执行的 SQL
+        columns: 结果列名列表
+        rows_preview_lines: 预格式化的行样本文本（由 result_summary 模块准备）
+        row_count: 结果总行数
+        lang: 回答语言（"zh"/"en"，跟随前端界面语言）
+
+    Returns:
+        完整的 user prompt
+    """
+    if lang == "en":
+        lang_rule = "Answer in English."
+        empty_hint = "If the sample is insufficient to fully answer, say so clearly and summarize what can be concluded."
+    else:
+        lang_rule = "请用中文回答。"
+        empty_hint = "如果样本数据不足以完整回答问题，请明确说明，并概括已能看出的结论。"
+
+    return f"""根据以下数据库查询结果回答用户的问题。
+
+## 用户问题
+{user_query}
+
+## 执行的 SQL
+```sql
+{sql}
+```
+
+## 查询结果（共 {row_count} 行，以下为部分行样本）
+列: {', '.join(columns)}
+{rows_preview_lines}
+
+## 硬性规则
+1. 只能引用上面"查询结果"中真实出现的数字和事实，绝对禁止编造、估算或心算未给出的数值
+2. 直接回答用户的问题；不要复述 SQL、不要描述表格结构；不超过 4 句话
+3. {empty_hint}
+4. {lang_rule}
 """
 

@@ -1,8 +1,9 @@
 """LLM 调用封装，支持 OpenAI、DeepSeek 和本地开发模式。
 
 安全设计:
+- 会话级配置通过 llm_cfg 参数显式传入（线程安全，可并发）
 - API Key 优先从服务端私有存储读取（不依赖 session_state，避免 WebSocket 泄漏）
-- 回退顺序: 服务端私有存储 > 侧边栏 session_state 遗留值 > .env 默认值
+- 回退顺序: 显式 llm_cfg > 服务端私有存储 > 侧边栏 session_state 遗留值 > .env 默认值
 - 错误消息中的 Key 自动脱敏
 """
 import re
@@ -14,14 +15,27 @@ from config import config
 _SQL_START_RE = re.compile(r"^\s*(select|with|explain|show|describe|desc)\b", re.IGNORECASE | re.MULTILINE)
 
 
-def _get_effective_config() -> tuple[str, str, str, str]:
+def _get_effective_config(llm_cfg: dict | None = None) -> tuple[str, str, str, str]:
     """获取生效的 LLM 配置。
 
     优先级（由高到低）:
+    0. 显式传入的会话级配置 llm_cfg（FastAPI 管道传参，非空字段覆盖，
+       空/缺失字段沿用默认链——与原 pipeline 的注入语义一致）
     1. 服务端私有存储（侧边栏输入，安全，不进入 WebSocket）
     2. 侧边栏 session_state 遗留值（兼容旧代码）
     3. .env / Streamlit secrets 默认值
     """
+    api_key, provider, base_url, model = _get_fallback_config()
+    cfg = llm_cfg or {}
+    api_key = cfg.get("api_key") or api_key
+    provider = cfg.get("provider") or provider
+    base_url = cfg.get("base_url") or base_url
+    model = cfg.get("model") or model
+    return api_key, provider, base_url, model
+
+
+def _get_fallback_config() -> tuple[str, str, str, str]:
+    """默认回退链的 LLM 配置（不含会话级显式配置）。"""
     api_key = ""
     provider = ""
     base_url = ""
@@ -152,6 +166,7 @@ def call_llm(
     max_tokens: int = 2048,
     model: str | None = None,
     temperature: float = 0.2,
+    llm_cfg: dict | None = None,
 ) -> str:
     """通用 LLM 调用入口。
 
@@ -161,11 +176,13 @@ def call_llm(
         max_tokens: 最大生成 token 数
         model: 模型名，默认根据 provider 自动选择
         temperature: 生成温度
+        llm_cfg: 会话级 LLM 配置 {provider, base_url, model, api_key}，
+                 非空字段优先于全局默认；传 None 走原回退链
 
     Returns:
         LLM 回复的纯文本（已提取 SQL）
     """
-    api_key, provider, base_url, default_model = _get_effective_config()
+    api_key, provider, base_url, default_model = _get_effective_config(llm_cfg)
 
     provider = provider.strip().lower().replace(" ", "")
     model = model or default_model or None
@@ -216,12 +233,13 @@ def call_llm_raw(
     max_tokens: int = 2048,
     model: str | None = None,
     temperature: float = 0.2,
+    llm_cfg: dict | None = None,
 ) -> str:
     """与 call_llm 相同，但返回 LLM 原始输出（不做 SQL 提取）。
 
     用于需要完整回复文本的场景（如纠错、推荐等）。
     """
-    api_key, provider, base_url, default_model = _get_effective_config()
+    api_key, provider, base_url, default_model = _get_effective_config(llm_cfg)
 
     provider = provider.strip().lower().replace(" ", "")
     model = model or default_model or None

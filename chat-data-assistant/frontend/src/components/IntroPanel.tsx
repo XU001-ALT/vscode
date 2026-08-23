@@ -1,6 +1,13 @@
 import type { Lang } from '../types'
 import { t } from '../i18n'
-import platformIntro from '../assets/platform-intro.png'
+import platformIntroZh from '../assets/platform-intro.png'
+import platformIntroEn from '../assets/platform-intro-light.png'
+
+// 图片配色跟随语言主题：中文=深蓝暗色版，英文=浅色版（色相一致、明度翻转）
+const INTRO_IMG: Record<Lang, string> = {
+  zh: platformIntroZh,
+  en: platformIntroEn,
+}
 
 export default function IntroPanel({ lang }: { lang: Lang }) {
   return (
@@ -11,15 +18,10 @@ export default function IntroPanel({ lang }: { lang: Lang }) {
         <p>{t('intro_p2', lang)}</p>
         <p>{t('intro_p3', lang)}</p>
         <img
-          src={platformIntro}
+          key={lang}
+          src={INTRO_IMG[lang]}
           alt="Chat Data platform"
-          style={{
-            width: '100%',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            marginTop: 6,
-            display: 'block',
-          }}
+          className="intro-img"
         />
       </div>
     </div>

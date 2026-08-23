@@ -148,13 +148,15 @@ def _fallback_recommendation(df: pd.DataFrame) -> dict | None:
             "reason": "自动选择：单一数值列，用直方图查看分布。"}
 
 
-def recommend_chart(df, user_query: str, sql: str) -> dict | None:
+def recommend_chart(df, user_query: str, sql: str,
+                    llm_cfg: dict | None = None) -> dict | None:
     """推荐图表配置。
 
     Args:
         df: SQL 执行结果 DataFrame
         user_query: 用户的原始自然语言问题
         sql: 已执行的 SQL
+        llm_cfg: 会话级 LLM 配置（见 call_llm_raw）
 
     Returns:
         {"chart_type": "line|bar|scatter|pie", "x_col": str, "y_col": str, "reason": str}
@@ -167,7 +169,7 @@ def recommend_chart(df, user_query: str, sql: str) -> dict | None:
         user_query, sql, list(df.columns), len(df), _column_info(df)
     )
     try:
-        raw = call_llm_raw(prompt, max_tokens=1024, temperature=0.0)
+        raw = call_llm_raw(prompt, max_tokens=1024, temperature=0.0, llm_cfg=llm_cfg)
     except Exception:
         return _fallback_recommendation(df)
 

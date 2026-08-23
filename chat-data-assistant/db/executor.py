@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, TimeoutError
 from config import config
 from db.connection import get_engine, get_connection, db_manager
-from db.exceptions import SQLExecutionError, SecurityError
+from db.exceptions import SQLExecutionError, SecurityError, DB_BUSY_MARKER
 
 # 危险SQL关键字（用于简单安全校验）
 DANGEROUS_KEYWORDS = [
@@ -84,13 +84,22 @@ def execute_sql(
         return _run_query(sql, max_rows)
     except SecurityError:
         raise
-    except OperationalError:
-        # 连接层错误（空闲断连等）：重建连接后重试一次
-        db_manager.close()
+    except TimeoutError:
+        # 连接池耗尽：当前并发查询过多。不销毁引擎（会拖累其他请求），
+        # 也不重试（只会加剧排队），直接给出可操作的提示。
+        raise SQLExecutionError(
+            f"{DB_BUSY_MARKER}，请稍后重试 (QueuePool limit reached)"
+        )
+    except OperationalError as e:
+        # 连接层错误（空闲断连等）：引擎已启用 pool_pre_ping，取连接时会
+        # 自动剔除死连接并重建，这里直接重试一次即可。
+        # 注意：不要 dispose 共享引擎——并发下其他请求的连接池会被无谓清空。
         try:
             return _run_query(sql, max_rows)
+        except SQLExecutionError:
+            raise
         except Exception as e:
-            raise SQLExecutionError(f"SQL执行失败: {e}")
+            raise SQLExecutionError(f"SQL执行失败: {e}") from e
     except Exception as e:
         raise SQLExecutionError(f"SQL执行失败: {e}")
 

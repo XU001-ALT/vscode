@@ -24,8 +24,8 @@ export function getSchemaDescriptions(): Promise<Record<string, string>> {
   return request('/api/schema/descriptions')
 }
 
-export function runQuery(sessionId: string | null, question: string): Promise<QueryResult> {
-  return request('/api/query', { method: 'POST', body: JSON.stringify({ session_id: sessionId, question }) })
+export function runQuery(sessionId: string | null, question: string, lang: string = 'zh'): Promise<QueryResult> {
+  return request('/api/query', { method: 'POST', body: JSON.stringify({ session_id: sessionId, question, lang }) })
 }
 
 export function getLlmConfig(sessionId: string): Promise<LlmConfig> {

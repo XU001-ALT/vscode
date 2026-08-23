@@ -10,6 +10,9 @@ _DB_MARKERS = (
 
 def classify_error(msg: str) -> str:
     m = (msg or "").lower()
+    # 数据库过载（连接池耗尽）：必须最先判断，避免命中其他 connection 类标记
+    if "queuepool" in m or "连接池已满" in m:
+        return "server_busy"
     if "401" in m or "unauthorized" in m or "invalid api key" in m or "authorization" in m:
         return "llm_auth"
     if any(k in m for k in _DB_MARKERS):

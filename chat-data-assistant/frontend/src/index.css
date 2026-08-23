@@ -156,6 +156,44 @@ body {
   font-weight: 700;
   color: var(--text);
 }
+/* 配图随语言主题切换（zh=深色原版 / en=浅色变体），切换时淡入过渡 */
+.intro-img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-top: 6px;
+  display: block;
+  animation: intro-img-fade 0.45s ease;
+}
+@keyframes intro-img-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── AI 解读卡片（chat 回应 / data 问数解读）── */
+.ai-answer {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--panel);
+  animation: intro-img-fade 0.35s ease;
+}
+.ai-answer-chat { border-left-color: var(--ok); }
+.ai-answer-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.ai-answer-body {
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
 
 /* ── 对话绘图区 ── */
 .query-box {

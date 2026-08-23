@@ -1,64 +1,64 @@
-"""查询管道：会话级 LLM 配置注入 + Text-to-SQL + 图表推荐。
+"""查询管道：会话级 LLM 配置 + 意图路由（chart/data/chat）。
 
-不修改 ai/ 模块本身：ai.llm_client 在无 Streamlit 运行时的回退链终点是
-config.Config 的类属性，这里在调用前后临时替换这些类属性（加锁防并发串扰）。
+LLM 配置通过 llm_cfg 参数显式传递（ai.llm_client 优先使用），
+不再修改全局 config，因此多个请求可以并发执行、互不串扰，
+无需全局锁串行化。
+
+意图路由：
+- chat: 寒暄/超范围问题，直接返回模型说明文字（answer），无 SQL 无图表
+- data: 问数问题，返回表格；ENABLE_AI_SUMMARY 开启时额外生成 grounded 文字解读
+- chart(缺省): 绘图问题，返回表格 + 图表推荐（原有行为）
 """
-import threading
-
 from ai.text_to_sql import to_sql_with_correction
 from config import config
 from core.secrets import sanitize_error
 
-_pipeline_lock = threading.Lock()
-
-_LLM_FIELDS = ("LLM_PROVIDER", "LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY")
-
-
-def _apply_session_llm(session_llm: dict):
-    backup = {f: getattr(config, f) for f in _LLM_FIELDS}
-    if session_llm.get("provider"):
-        config.LLM_PROVIDER = session_llm["provider"]
-    if session_llm.get("base_url"):
-        config.LLM_BASE_URL = session_llm["base_url"]
-    if session_llm.get("model"):
-        config.LLM_MODEL = session_llm["model"]
-    if session_llm.get("api_key"):
-        config.LLM_API_KEY = session_llm["api_key"]
-    return backup
-
-
-def _restore_llm(backup: dict):
-    for f, v in backup.items():
-        setattr(config, f, v)
+# 会话级 LLM 配置字段（与 sessions._new_session 的结构对应）
+_LLM_CFG_FIELDS = ("provider", "base_url", "model", "api_key")
 
 
 def run_query(schema_summary: str, history: list[dict], question: str,
-              session_llm: dict) -> dict:
+              session_llm: dict, lang: str = "zh") -> dict:
     """执行一次完整查询，返回 JSON 友好的结果字典。"""
-    with _pipeline_lock:
-        backup = _apply_session_llm(session_llm)
-        try:
-            sql, df, error = to_sql_with_correction(
-                schema_summary=schema_summary,
-                chat_history=history,
-                user_query=question,
-                execute_fn=execute_sql_safe,
-            )
-            recommendation = None
-            if df is not None and not df.empty:
-                from ai.chart_recommendation import recommend_chart
+    llm_cfg = {f: session_llm.get(f) or "" for f in _LLM_CFG_FIELDS}
+
+    outcome = to_sql_with_correction(
+        schema_summary=schema_summary,
+        chat_history=history,
+        user_query=question,
+        execute_fn=execute_sql_safe,
+        llm_cfg=llm_cfg,
+        lang=lang,
+    )
+
+    answer = None
+    recommendation = None
+    if outcome.intent == "chat":
+        answer = outcome.message
+    elif outcome.error is None and outcome.df is not None and not outcome.df.empty:
+        if outcome.intent == "data":
+            if config.ENABLE_AI_SUMMARY:
+                from ai.result_summary import summarize_result
                 try:
-                    recommendation = recommend_chart(df, question, sql)
+                    answer = summarize_result(outcome.df, question, outcome.sql,
+                                              lang=lang, llm_cfg=llm_cfg)
                 except Exception:
-                    recommendation = None
-        finally:
-            _restore_llm(backup)
+                    answer = None
+        else:
+            from ai.chart_recommendation import recommend_chart
+            try:
+                recommendation = recommend_chart(outcome.df, question, outcome.sql,
+                                                 llm_cfg=llm_cfg)
+            except Exception:
+                recommendation = None
 
     return {
-        "sql": sql,
-        "error": sanitize_error(error) if error else None,
+        "sql": outcome.sql,
+        "error": sanitize_error(outcome.error) if outcome.error else None,
         "recommendation": recommendation,
-        **_dataframe_payload(df),
+        "answer": answer,
+        "intent": outcome.intent,
+        **_dataframe_payload(outcome.df),
     }
 
 

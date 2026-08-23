@@ -87,7 +87,14 @@ const dict = {
     zh: '未能生成合法 SQL，请换个问法或确认问题在数据范围内。',
     en: 'Could not generate valid SQL. Rephrase or check the question scope.',
   },
+  err_server_busy: {
+    zh: '当前查询较多，系统繁忙，请稍后重试。',
+    en: 'The system is busy with queries. Please try again shortly.',
+  },
   err_unknown: { zh: '查询出错。', en: 'Query failed.' },
+
+  // AI 解读卡片
+  ans_title: { zh: 'AI 解读', en: 'AI Insight' },
 
   // Config panel
   config_area: { zh: '配置区', en: 'Configuration' },
