@@ -39,10 +39,6 @@ class Config:
     # 调试开关：为 True 时把实际执行的 SQL 写入 logs/sql_debug.log（仅服务端可见，界面不展示）
     DEBUG_SQL: bool = _get("DEBUG_SQL", "false").lower() in ("true", "1", "yes")
 
-    # AI 文字解读开关（问数模式）：开启后"想知道数据情况"类问题会把查询结果
-    # 摘要发送给所配 LLM 服务生成文字结论。关闭则问数模式仅返回表格。
-    ENABLE_AI_SUMMARY: bool = _get("ENABLE_AI_SUMMARY", "true").lower() in ("true", "1", "yes")
-    
     @classmethod
     def validate_db(cls) -> list[str]:
         """验证数据库配置"""

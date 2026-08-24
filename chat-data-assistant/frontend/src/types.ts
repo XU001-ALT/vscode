@@ -22,7 +22,7 @@ export interface QueryResult {
   rows: unknown[][]
   row_count: number
   recommendation: ChartRecommendation | null
-  answer?: string | null   // chat 回应或 data 模式的 AI 文字解读
+  answer?: string | null   // chat 回应或问数模式的批量数据拒绝提醒
   intent?: QueryIntent | null
 }
 

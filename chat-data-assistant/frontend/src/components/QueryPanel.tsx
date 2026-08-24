@@ -3,6 +3,7 @@ import type { ErrorCode, Lang, QueryResult } from '../types'
 import { runQuery } from '../api'
 import { t, type TKey } from '../i18n'
 import ChartView from './ChartView'
+import DataResultView from './DataResultView'
 
 function errKey(code?: string | null): TKey {
   const known: ErrorCode[] = [
@@ -47,11 +48,17 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       <div className="panel-title">{t('chat_plot_area', lang)}</div>
 
       <div className="query-box">
-        <input
+        <textarea
           value={question}
+          rows={2}
           placeholder={t('query_ph', lang)}
           onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              submit()
+            }
+          }}
           disabled={loading}
         />
         <button onClick={submit} disabled={loading || !question.trim()}>
@@ -90,14 +97,18 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           )}
 
           {result?.answer && !result.error && !loading && (
-            <div className={`ai-answer${result.intent === 'chat' ? ' ai-answer-chat' : ''}`}>
-              <div className="ai-answer-title">{t('ans_title', lang)}</div>
+            <div className="ai-answer ai-answer-chat">
               <div className="ai-answer-body">{result.answer}</div>
             </div>
           )}
 
-          {/* data 意图只保留 AI 解读，不展示绘图界面 */}
-          {result && result.columns.length > 0 && result.intent !== 'data' && (
+          {/* 问数模式：聚合结果以回答框/表格直接展示（不返回明细数据，也不展示绘图界面） */}
+          {result && result.intent === 'data' && result.columns.length > 0 && !result.error && !loading && (
+            <DataResultView columns={result.columns} rows={result.rows} lang={lang} />
+          )}
+
+          {/* 绘图模式：表格 + 图表 */}
+          {result && result.columns.length > 0 && result.intent === 'chart' && (
             <ChartView
               columns={result.columns}
               rows={result.rows}

@@ -25,16 +25,16 @@ const dict = {
     en: 'The platform supports natural-language querying: ask a question in the Chat & Plot panel and the AI automatically generates and executes SQL to return your data. Six chart types are available — line, area, bar, scatter, pie, and histogram — with configs recommended by AI or adjustable manually.',
   },
   intro_p5: {
-    zh: 'AI 会自动分析你的提问意图：想画图时自动推荐合适的图表配置，只想问数据时直接返回数据结果与解读，寒暄或超出数据范围的问题也会得到友好回应。',
-    en: "The AI analyzes your intent automatically: chart requests get a suitable chart config recommended; pure data questions return results with insights directly; casual or out-of-scope questions still receive a friendly response.",
+    zh: 'AI 会自动分析你的提问意图：想画图时自动推荐合适的图表配置，想查数据时直接给出最大值、最小值、平均值等统计特例值，不适当或超出范围的问题会被提醒。',
+    en: "The AI analyzes your intent automatically: chart requests get a suitable chart config recommended; data questions return quick statistics such as max, min, and average directly; inappropriate or out-of-scope questions receive a reminder.",
   },
 
   // Query panel
   chat_plot_area: { zh: '对话绘图区', en: 'Chat & Plot' },
   result_area: { zh: '结果展示区', en: 'Results' },
   query_ph: {
-    zh: '请输入查询，例如：查看所有实验数据中温度大于500的记录',
-    en: 'Enter a query, e.g.: show all records where temperature > 500',
+    zh: '请输入查询，例如：实验数据中的最高温度是多少？',
+    en: 'Enter a query, e.g.: what is the maximum temperature in the experiments?',
   },
   send: { zh: '发送', en: 'Send' },
   querying: { zh: '查询中…', en: 'Querying…' },
@@ -105,9 +105,6 @@ const dict = {
     en: 'The system is busy with queries. Please try again shortly.',
   },
   err_unknown: { zh: '查询出错。', en: 'Query failed.' },
-
-  // AI 解读卡片
-  ans_title: { zh: 'AI 解读', en: 'AI Insight' },
 
   // Config panel
   config_area: { zh: '配置区', en: 'Configuration' },

@@ -3,8 +3,7 @@
 覆盖：
 - extract_intent 解析与缺省行为
 - to_sql_with_correction 的 chat 快速返回 / 意图透传
-- summarize_result 的 grounded prompt 与降级
-- pipeline.run_query 按 intent + 开关路由
+- pipeline.run_query 按 intent 路由与问数模式批量数据兜底拦截
 
 无 pytest 依赖，可直接运行：
     venv\\Scripts\\python.exe tests\\test_intent_routing.py
@@ -153,66 +152,65 @@ def test_busy_error_keeps_intent():
     assert len(exec_fn.calls) == 1, "过载错误不应触发 LLM 纠错循环"
 
 
-# ── summarize_result ──
-
-def test_summarize_grounds_prompt_and_returns_text():
-    import ai.result_summary as rs
-
-    captured = {}
-
-    def fake_raw(prompt, max_tokens=1024, temperature=0.2, llm_cfg=None):
-        captured["prompt"] = prompt
-        captured["cfg"] = llm_cfg
-        return "共 2 条记录，col 值为 1 和 2。"
-
-    original = rs.call_llm_raw
-    rs.call_llm_raw = fake_raw
-    try:
-        df = pd.DataFrame({"name": ["MgH2", "很长的" * 40], "val": [1.5, 2]})
-        ans = rs.summarize_result(df, "有哪些样本？", "SELECT ...",
-                                  lang="en", llm_cfg={"api_key": "k-x"})
-    finally:
-        rs.call_llm_raw = original
-
-    assert ans and "2 条记录" in ans
-    assert "MgH2" in captured["prompt"]
-    assert "Answer in English" in captured["prompt"], "en 语言指令缺失"
-    assert "编造" in captured["prompt"], "grounded 约束缺失"
-    assert captured["cfg"] == {"api_key": "k-x"}
-    # 长文本单元格应被截断
-    assert "…" in captured["prompt"]
-
-
-def test_summarize_empty_df_returns_none():
-    import ai.result_summary as rs
-    assert rs.summarize_result(pd.DataFrame(), "q", "s") is None
-
-
 # ── pipeline 路由 ──
 
-def _run_pipeline(outcome, enable_summary=True):
+def _run_pipeline(outcome):
     import api.pipeline as pl
-    from config import Config
 
-    df = outcome.df if isinstance(outcome.df, pd.DataFrame) else None
-    original_tts = pl.to_sql_with_correction
-    original_flag = Config.ENABLE_AI_SUMMARY
+    original = pl.to_sql_with_correction
     pl.to_sql_with_correction = lambda **kw: outcome
-    Config.ENABLE_AI_SUMMARY = enable_summary
     try:
         return pl.run_query(schema_summary="s", history=[], question="q",
                             session_llm={}, lang="zh")
     finally:
-        pl.to_sql_with_correction = original_tts
-        Config.ENABLE_AI_SUMMARY = original_flag
+        pl.to_sql_with_correction = original
 
 
-def test_pipeline_data_intent_returns_answer():
-    res = _run_pipeline(QueryOutcome(sql="SELECT 1", df=pd.DataFrame({"a": [1]}),
+def test_pipeline_data_intent_returns_stats_table():
+    res = _run_pipeline(QueryOutcome(sql="SELECT MAX(a) FROM t",
+                                     df=pd.DataFrame({"max_a": [1]}),
                                      error=None, intent="data", message=None))
     assert res["intent"] == "data"
-    assert res["answer"] is not None, "data 意图应生成解读（开关默认开）"
+    assert res["answer"] is None, "问数模式不再生成 LLM 文字解读"
     assert res["recommendation"] is None
+    assert res["columns"] == ["max_a"] and res["row_count"] == 1
+
+
+def test_pipeline_data_single_row_multi_col_passes():
+    res = _run_pipeline(QueryOutcome(sql="SELECT MAX(a), MIN(a) FROM t",
+                                     df=pd.DataFrame({"max": [9], "min": [1]}),
+                                     error=None, intent="data", message=None))
+    assert res["answer"] is None
+    assert res["row_count"] == 1
+
+
+def test_pipeline_data_bulk_sql_is_refused():
+    """无聚合函数的 data SQL 视为批量拉取明细数据，应拒绝并清空数据。"""
+    res = _run_pipeline(QueryOutcome(sql="SELECT a, b FROM t",
+                                     df=pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
+                                     error=None, intent="data", message=None))
+    assert res["answer"], "无聚合 SQL 应被兜底拦截"
+    assert "抱歉" in res["answer"] and "批量" in res["answer"]
+    assert res["columns"] == [] and res["rows"] == [] and res["row_count"] == 0, \
+        "拒绝时不得向客户端返回任何明细数据"
+
+
+def test_pipeline_data_multi_row_result_is_refused():
+    """GROUP BY 等多行结果同样视为批量操作，应拒绝。"""
+    res = _run_pipeline(QueryOutcome(
+        sql="SELECT p_type, AVG(x) FROM t GROUP BY p_type",
+        df=pd.DataFrame({"p_type": ["a", "b"], "avg_x": [1.0, 2.0]}),
+        error=None, intent="data", message=None))
+    assert res["answer"] and "抱歉" in res["answer"]
+    assert res["columns"] == [] and res["row_count"] == 0
+
+
+def test_pipeline_data_agg_in_subquery_passes():
+    sql = "SELECT * FROM (SELECT MAX(x) AS m FROM t) sub"
+    res = _run_pipeline(QueryOutcome(sql=sql, df=pd.DataFrame({"m": [1]}),
+                                     error=None, intent="data", message=None))
+    assert res["answer"] is None
+    assert res["columns"] == ["m"]
 
 
 def test_pipeline_chart_intent_returns_recommendation():
@@ -229,15 +227,6 @@ def test_pipeline_chat_intent_answer_only():
     assert res["intent"] == "chat"
     assert res["answer"] == "你好呀"
     assert res["columns"] == [] and res["row_count"] == 0
-
-
-def test_pipeline_summary_disabled_data_falls_back_to_table():
-    res = _run_pipeline(QueryOutcome(sql="SELECT 1", df=pd.DataFrame({"a": [1]}),
-                                     error=None, intent="data", message=None),
-                        enable_summary=False)
-    assert res["intent"] == "data"
-    assert res["answer"] is None
-    assert res["recommendation"] is None, "总结关闭时问数模式仅返回表格"
 
 
 if __name__ == "__main__":

@@ -195,6 +195,17 @@ body {
   line-height: 1.55;
 }
 
+/* ── 问数模式 · 单行统计结果回答框 ── */
+.data-value { font-size: 1.25rem; font-weight: 600; }
+.data-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+}
+.data-kv-label { color: var(--text-dim); font-size: 0.85rem; }
+.data-kv-value { font-weight: 600; word-break: break-all; text-align: right; }
+
 /* ── 对话绘图区 ── */
 .query-box {
   display: flex;
@@ -202,7 +213,7 @@ body {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
 }
-.query-box input {
+.query-box textarea {
   flex: 1;
   background: var(--input-bg);
   border: 1px solid var(--border);
@@ -210,18 +221,23 @@ body {
   border-radius: 10px;
   padding: 10px 14px;
   font-size: 0.95rem;
+  font-family: inherit;
+  line-height: 1.5;
   outline: none;
+  resize: none;
 }
-.query-box input:focus { border-color: var(--accent); }
+.query-box textarea:focus { border-color: var(--accent); }
 .query-box button {
   background: var(--accent);
   color: var(--accent-text);
   border: none;
   border-radius: 10px;
-  padding: 10px 22px;
+  padding: 10px 14px;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
+  writing-mode: vertical-rl; /* 「发送」竖排显示 */
+  letter-spacing: 2px;
+  text-align: center;
 }
 .query-box button:disabled { opacity: 0.55; cursor: not-allowed; }
 
