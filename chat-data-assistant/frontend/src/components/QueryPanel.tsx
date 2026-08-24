@@ -60,6 +60,7 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       </div>
 
       <div className="result-area">
+        <div className="panel-title result-title">{t('result_area', lang)}</div>
         <div className="result-body">
           {loading && (
             <div className="loading-block">
@@ -73,7 +74,9 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           )}
 
           {!loading && schemaLoaded && !result && (
-            <div className="msg info">{t('no_chart', lang)}</div>
+            <div className="msg info">
+              <div>{t('result_tips', lang)}</div>
+            </div>
           )}
 
           {result?.error && !loading && (
@@ -93,7 +96,8 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
             </div>
           )}
 
-          {result && result.columns.length > 0 && (
+          {/* data 意图只保留 AI 解读，不展示绘图界面 */}
+          {result && result.columns.length > 0 && result.intent !== 'data' && (
             <ChartView
               columns={result.columns}
               rows={result.rows}
@@ -104,7 +108,7 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
         </div>
 
         {result && result.columns.length > 0 && (
-          <div style={{ marginTop: 10 }}>
+          <div style={{ padding: '8px 18px 12px' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
               {t('rows_returned', lang)}{result.row_count}{t('rows_unit', lang)}
             </span>

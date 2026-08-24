@@ -17,6 +17,8 @@ export default function IntroPanel({ lang }: { lang: Lang }) {
         <p><span className="intro-brand">{t('intro_brand', lang)}</span>{t('intro_p1_rest', lang)}</p>
         <p>{t('intro_p2', lang)}</p>
         <p>{t('intro_p3', lang)}</p>
+        <p>{t('intro_p4', lang)}</p>
+        <p>{t('intro_p5', lang)}</p>
         <img
           key={lang}
           src={INTRO_IMG[lang]}

@@ -20,9 +20,18 @@ const dict = {
     zh: '在「配置区」可以设置 API、查看数据库连接、管理 Schema，并通过「数据使用声明」了解各数据表的情况；在「对话绘图区」提交自然语言查询，即可获得数据结果与可视化分析。',
     en: "In the 'Config' panel you can manage API settings, check database connections, manage schema, and learn about each data table via the 'Data Usage Guide'. In the 'Chat & Plot' panel, submit natural-language queries to get results with visual analysis.",
   },
+  intro_p4: {
+    zh: '平台支持自然语言查询：在「对话绘图区」用一句话提问，AI 即可自动生成并执行 SQL 返回数据；并提供 6 种图表类型——折线图、面积图、柱状图、散点图、饼图和直方图，可由 AI 自动推荐配置，也可手动切换调整。',
+    en: 'The platform supports natural-language querying: ask a question in the Chat & Plot panel and the AI automatically generates and executes SQL to return your data. Six chart types are available — line, area, bar, scatter, pie, and histogram — with configs recommended by AI or adjustable manually.',
+  },
+  intro_p5: {
+    zh: 'AI 会自动分析你的提问意图：想画图时自动推荐合适的图表配置，只想问数据时直接返回数据结果与解读，寒暄或超出数据范围的问题也会得到友好回应。',
+    en: "The AI analyzes your intent automatically: chart requests get a suitable chart config recommended; pure data questions return results with insights directly; casual or out-of-scope questions still receive a friendly response.",
+  },
 
   // Query panel
   chat_plot_area: { zh: '对话绘图区', en: 'Chat & Plot' },
+  result_area: { zh: '结果展示区', en: 'Results' },
   query_ph: {
     zh: '请输入查询，例如：查看所有实验数据中温度大于500的记录',
     en: 'Enter a query, e.g.: show all records where temperature > 500',
@@ -30,6 +39,10 @@ const dict = {
   send: { zh: '发送', en: 'Send' },
   querying: { zh: '查询中…', en: 'Querying…' },
   no_chart: { zh: '要渲染图表，请先执行查询得到数据。', en: 'Run a query first to render charts.' },
+  result_tips: {
+    zh: '在上方输入问题即可查询数据并生成图表。小提示：清晰具体的提问有助于 AI 准确理解你的意图——想绘图时可注明图表类型或关注的数据维度（如“用折线图展示温度随时间的变化”），只想查数据时直接描述所需内容；若图表未能按预期生成，通常是问法不够明确，换个更具体的说法再试即可。',
+    en: "Type a question above to query data and generate charts. Tip: clear, specific questions help the AI understand your intent — for charts, mention the chart type or data dimensions (e.g. 'show temperature over time as a line chart'); for pure data questions, just describe what you need. If a chart isn't generated as expected, the question was likely ambiguous — try rephrasing it more specifically.",
+  },
   rows_returned: { zh: '已返回 ', en: 'Returned ' },
   rows_unit: { zh: ' 行数据', en: ' rows' },
   use_ai_rec: { zh: '使用 AI 推荐的图表配置', en: 'Use AI-recommended chart config' },
