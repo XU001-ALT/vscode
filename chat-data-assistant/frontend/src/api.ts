@@ -1,7 +1,12 @@
 import type { BootstrapState, LlmConfig, QueryResult } from './types'
 
+// API 基础地址：通过 VITE_API_BASE_URL 环境变量配置
+// - 开发模式（Vite dev server）：留空，由 vite.config.ts 的 proxy 转发到后端
+// - 生产部署：设置为后端地址，如 "http://your-server:8000"
+const API_BASE: string = (import.meta as any).env?.VITE_API_BASE_URL ?? ''
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}${url}`, {
     headers: { 'Content-Type': 'application/json' },
     ...init,
   })

@@ -28,3 +28,6 @@ logs/
 
 # Runtime data (session store)
 chat-data-assistant/data/
+
+# Legacy Streamlit UI (replaced by frontend/)
+chat-data-assistant/ui/

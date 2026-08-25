@@ -1,19 +1,18 @@
-"""Chat Data API 入口。
+"""Chat Data API 入口（前后端分离版）。
 
 启动：
     venv\\Scripts\\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 （必须在 chat-data-assistant 目录下运行）
 
-开发模式下前端由 Vite 开发服务器托管（5173），通过代理访问 /api；
-生产模式下若存在 frontend/dist 则直接由本服务托管静态文件。
+本服务只提供 /api/* 接口，前端需独立部署（Nginx / CDN / Vite preview 等）。
+前端通过环境变量 VITE_API_BASE_URL 指向本服务地址。
 """
+import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from api import compat  # noqa: F401  必须最先导入：Python 3.14rc2 typing 兼容补丁
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from core import bootstrap
 
@@ -26,12 +25,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Chat Data API", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# CORS 允许的前端来源，通过环境变量 CORS_ORIGINS 配置（逗号分隔）
+# 默认允许常见开发端口；部署时按实际前端域名配置
+_cors_raw = os.getenv("CORS_ORIGINS", "")
+if _cors_raw.strip():
+    _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+else:
+    _cors_origins = [
         "http://localhost:5173", "http://127.0.0.1:5173",
         "http://localhost:4173", "http://127.0.0.1:4173",
-    ],
+        "http://localhost:8000", "http://127.0.0.1:8000",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -45,17 +53,3 @@ app.include_router(system_router)
 app.include_router(schema_router)
 app.include_router(query_router)
 app.include_router(config_router)
-
-# 生产模式：托管前端构建产物（需在路由注册之后挂载）。
-# index.html 每次都向服务器校验新鲜度（no-cache），避免更新后浏览器用旧页面
-# 引用已被删除的旧 hash 资源；带 hash 的静态资源仍可长期缓存。
-_frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
-
-    @app.middleware("http")
-    async def no_cache_index(request, call_next):
-        response = await call_next(request)
-        if request.url.path in ("/", "/index.html"):
-            response.headers["Cache-Control"] = "no-cache"
-        return response

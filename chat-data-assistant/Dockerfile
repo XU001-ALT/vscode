@@ -1,6 +1,8 @@
 # ── 阶段 1：构建前端 ──
 FROM node:22-alpine AS frontend-build
 WORKDIR /app/frontend
+ARG VITE_API_BASE_URL=
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install --no-audit --no-fund
 COPY frontend/ ./
@@ -19,7 +21,6 @@ COPY core/ ./core/
 COPY db/ ./db/
 COPY schema/ ./schema/
 COPY config.py ./
-COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
 # .env 通过 docker run --env-file 或 compose 注入，不打入镜像
 EXPOSE 8000
