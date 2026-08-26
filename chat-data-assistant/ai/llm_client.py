@@ -15,6 +15,26 @@ from config import config
 _SQL_START_RE = re.compile(r"^\s*(select|with|explain|show|describe|desc)\b", re.IGNORECASE | re.MULTILINE)
 
 
+def _infer_provider_from_url(base_url: str) -> str:
+    """根据 base_url 自动推断 provider（provider 为空时的兜底）。"""
+    url = base_url.lower()
+    if "openai.com" in url:
+        return "openai"
+    if "deepseek" in url:
+        return "deepseek"
+    if "anthropic" in url or "claude" in url:
+        return "anthropic"
+    if "dashscope" in url or "aliyun" in url or "qwen" in url:
+        return "openai"  # 通义千问兼容 OpenAI 协议
+    if "moonshot" in url:
+        return "openai"  # Kimi 兼容 OpenAI 协议
+    if "baichuan" in url:
+        return "openai"
+    if "closeai" in url:
+        return "openai"  # CloseAI 中转兼容 OpenAI 协议
+    return ""
+
+
 def _get_effective_config(llm_cfg: dict | None = None) -> tuple[str, str, str, str]:
     """获取生效的 LLM 配置。
 
@@ -31,6 +51,9 @@ def _get_effective_config(llm_cfg: dict | None = None) -> tuple[str, str, str, s
     provider = cfg.get("provider") or provider
     base_url = cfg.get("base_url") or base_url
     model = cfg.get("model") or model
+    # provider 仍为空时，从 base_url 自动推断（UI 保存时未传 provider 字段）
+    if not provider and base_url:
+        provider = _infer_provider_from_url(base_url)
     return api_key, provider, base_url, model
 
 

@@ -163,6 +163,7 @@ body {
   border: 1px solid var(--border);
   margin-top: 6px;
   display: block;
+  object-fit: contain;
   animation: intro-img-fade 0.45s ease;
 }
 @keyframes intro-img-fade {
