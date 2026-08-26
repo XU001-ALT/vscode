@@ -239,7 +239,7 @@ INTENT: chat
 # ============================================================
 
 # 饼图分类数上限（超过则切片过多，视觉不可读）
-PIE_MAX_CATEGORIES = 15
+PIE_MAX_CATEGORIES = 7
 
 
 # ============================================================
@@ -437,13 +437,13 @@ def build_chart_recommendation_prompt(
 - area: 累计量/趋势幅度（同 line，强调体量感）
 - bar: 分类对比（X 为类别，Y 为数值）
 - scatter: 双数值列相关性（X、Y 都应为数值）
-- pie: 占比/比例数据（X 为类别，Y 为数值）
+- pie: 占比/比例数据（X 为类别，Y 为数值）。**分类不超过 7 个**，超过时合并小项为"其他"；结果按数值降序排列
 - histogram: 单个数值列的分布/区间集中情况（x_col 填该数值列，y_col 留空）
 
 ## 硬性约束
 1. x_col 和 y_col 必须是上面列信息中真实存在的列名
 2. 除 pie 和 histogram 外，y_col 必须是"数值"类型列
-3. pie 的 x_col 唯一值数不能超过 {PIE_MAX_CATEGORIES} 个
+3. pie 的 x_col 唯一值数不能超过 {PIE_MAX_CATEGORIES} 个；若超过，请在 SQL 中用 CASE WHEN 合并小项
 4. 除 histogram 外，x_col 与 y_col 不能相同
 5. 用户问题关注"分布""集中在什么范围""区间"时优先 histogram
 """

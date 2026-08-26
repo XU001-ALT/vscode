@@ -100,7 +100,11 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
     let chart: ChartType
     let x: string
     let ys: string[]
-    if (recommendation && useRec) {
+    const recOk = !!(recommendation && useRec &&
+      (recommendation.chart_type === 'histogram'
+        ? columns.includes(recommendation.x_col)
+        : columns.includes(recommendation.x_col) && columns.includes(recommendation.y_col)))
+    if (recOk) {
       chart = recommendation.chart_type
       x = recommendation.x_col
       ys = [recommendation.y_col]
@@ -135,16 +139,36 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
 
     if (chart === 'pie') {
       const vi = columns.indexOf(ys[0])
+      // 按数值降序排列，超过 7 类的合并为"其他"
+      const MAX_SLICES = 7
+      const rawLabels: string[] = rows.map(r => String(r[xi] ?? ''))
+      const rawValues: (number | null)[] = toValues(rows, vi)
+      const pairs = rawLabels.map((l, i) => ({ label: l || '(空)', value: rawValues[i] ?? 0 }))
+      pairs.sort((a, b) => b.value - a.value)
+
+      let slices: { label: string; value: number }[]
+      if (pairs.length > MAX_SLICES) {
+        const main = pairs.slice(0, MAX_SLICES - 1)
+        const otherSum = pairs.slice(MAX_SLICES - 1).reduce((s, p) => s + p.value, 0)
+        slices = [...main, { label: '其他', value: otherSum }]
+      } else {
+        slices = pairs
+      }
+
+      const total = slices.reduce((s, p) => s + p.value, 0) || 1
       data = [{
         type: 'pie',
-        labels: rows.map(r => String(r[xi] ?? '')),
-        values: toValues(rows, vi),
-        hole: 0.55,
+        labels: slices.map(s => s.label),
+        values: slices.map(s => s.value),
+        hole: 0.48,
+        sort: false,
         marker: { colors: PALETTE, line: { color: 'rgba(0,0,0,0)', width: 0 } },
         textinfo: 'label+percent',
-        textposition: 'outside',
-        textfont: { family: FONT, size: 11.5 },
+        textposition: slices.length <= 5 ? 'inside' : 'outside',
+        textfont: { family: FONT, size: slices.length <= 5 ? 13 : 11 },
+        insidetextorientation: 'horizontal',
         automargin: true,
+        pull: slices.map(s => s.value / total < 0.05 ? 0.06 : 0),
         hovertemplate: '%{label}<br>%{value} (%{percent})<extra></extra>',
       }]
     } else if (chart === 'histogram') {
