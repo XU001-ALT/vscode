@@ -16,7 +16,6 @@ export default function IntroPanel({ lang }: { lang: Lang }) {
           poster="/demo-poster.jpg"
           className="intro-img"
           loop
-          muted
           playsInline
           controls
         />
