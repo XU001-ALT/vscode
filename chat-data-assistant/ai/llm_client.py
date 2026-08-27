@@ -51,9 +51,10 @@ def _get_effective_config(llm_cfg: dict | None = None) -> tuple[str, str, str, s
     provider = cfg.get("provider") or provider
     base_url = cfg.get("base_url") or base_url
     model = cfg.get("model") or model
-    # provider 仍为空时，从 base_url 自动推断（UI 保存时未传 provider 字段）
-    if not provider and base_url:
-        provider = _infer_provider_from_url(base_url)
+    # session 未显式设 provider 时，从最终 base_url 推断
+    # （UI 保存时未传 provider 字段，避免 .env 的 provider 覆盖用户选的 URL 对应的正确 provider）
+    if not cfg.get("provider") and base_url:
+        provider = _infer_provider_from_url(base_url) or provider
     return api_key, provider, base_url, model
 
 
@@ -154,7 +155,9 @@ def _post_openai_compatible(
         raise RuntimeError("LLM_API_KEY 未设置，请在侧边栏填写或 .env 中配置")
 
     base_url = (base_url or config.LLM_BASE_URL).strip() or "https://api.openai.com"
-    url = base_url.rstrip("/") + endpoint
+    # 去掉 base_url 末尾可能带的 /v1，因为 endpoint 已包含 /v1/...
+    clean_base = re.sub(r"/v1\s*$", "", base_url.rstrip("/"))
+    url = clean_base + endpoint
 
     headers = {
         "Authorization": f"Bearer {api_key}",
