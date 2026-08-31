@@ -21,8 +21,8 @@ const dict = {
     en: "In the 'Config' panel you can manage API settings, check database connections, manage schema, and learn about each data table via the 'Data Usage Guide'. In the 'Chat & Plot' panel, submit natural-language queries to get results with visual analysis.",
   },
   intro_p4: {
-    zh: '平台支持自然语言查询：在「对话绘图区」用一句话提问，AI 即可自动生成并执行 SQL 返回数据；并提供 6 种图表类型——折线图、面积图、柱状图、散点图、饼图和直方图，可由 AI 自动推荐配置，也可手动切换调整。',
-    en: 'The platform supports natural-language querying: ask a question in the Chat & Plot panel and the AI automatically generates and executes SQL to return your data. Six chart types are available — line, area, bar, scatter, pie, and histogram — with configs recommended by AI or adjustable manually.',
+    zh: '平台支持自然语言查询：在「对话绘图区」用一句话提问，AI 即可自动生成并执行 SQL 返回数据；并提供 12 种图表——折线图、柱状图、散点图、气泡散点、三维散点、相关性热力图、平行坐标、箱线分布、材料雷达图、饼图和直方图、面积图，可由 AI 自动推荐配置，也可手动切换调整；未配置 API Key 时可通过手动 SQL 直接绘图。',
+    en: 'The platform supports natural-language querying: ask a question in the Chat & Plot panel and the AI automatically generates and executes SQL to return your data. Twelve chart types are available — line, bar, scatter, bubble, 3D scatter, correlation heatmap, parallel coordinates, box plot, material radar, pie, histogram, and area — with configs recommended by AI or adjustable manually. Without an API key you can still plot directly via manual SQL.',
   },
   intro_p5: {
     zh: 'AI 会自动分析你的提问意图：想画图时自动推荐合适的图表配置，想查数据时直接给出最大值、最小值、平均值等统计特例值，不适当或超出范围的问题会被提醒。',

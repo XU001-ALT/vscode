@@ -152,6 +152,7 @@ export default function ConfigPanel({ lang, sessionId, boot }: Props) {
         </Section>
 
         <Section title={t('data_guide', lang)}>
+          <div style={{ marginBottom: 10 }}>{t('data_guide_body', lang)}</div>
           {Object.entries(descs).map(([tbl, d]) => (
             <div key={tbl} style={{ marginBottom: 8 }}>
               <b style={{ color: 'var(--text)' }}>{tbl}</b>
