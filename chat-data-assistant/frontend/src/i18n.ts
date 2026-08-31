@@ -95,6 +95,8 @@ const dict = {
   failed_sql: { zh: '失败 SQL：', en: 'Failed SQL: ' },
   fixed_sql: { zh: '修复为：', en: 'Fixed to: ' },
   manual_error_title: { zh: '手动查询出错', en: 'Manual query failed' },
+  open_manual: { zh: '手动绘图 (SQL)', en: 'Manual plot (SQL)' },
+  close_manual: { zh: '收起手动绘图', en: 'Close manual plot' },
   load_schema_first: {
     zh: '正在连接数据库并加载表结构，请稍候…',
     en: 'Connecting to the database and loading schema, please wait…',

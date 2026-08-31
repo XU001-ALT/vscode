@@ -441,6 +441,12 @@ body {
   background: currentColor;
   flex: none;
 }
+.mode-bar-spacer { flex: 1; }
+.mode-toggle {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+}
 
 /* ── 手动 SQL 输入 ── */
 .manual-sql-box {

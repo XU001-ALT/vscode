@@ -25,21 +25,28 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
   const [result, setResult] = useState<QueryResult | null>(null)
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
 
+  // 手动绘图模式：SQL 输入 + 执行（两种模式下均可展开）
+  const [showManual, setShowManual] = useState(false)
+  const [sql, setSql] = useState('')
+  const [manualLoading, setManualLoading] = useState(false)
+  const [manualError, setManualError] = useState<string | null>(null)
+
   // 探测当前会话是否已配置 API Key（服务端内存 Key 或全局配置）
   useEffect(() => {
     if (!sessionId) return
     let alive = true
     getLlmConfig(sessionId)
-      .then(cfg => { if (alive) setHasApiKey(!!cfg.key_masked) })
-      // 探测失败时视为无 Key，走手动模式（可少一次对 LLM 的依赖判断）
-      .catch(() => { if (alive) setHasApiKey(false) })
+      .then(cfg => {
+        if (!alive) return
+        const k = !!cfg.key_masked
+        setHasApiKey(k)
+        // 无 Key 时默认展开手动绘图，有 Key 时默认收起（可手动展开）
+        setShowManual(!k)
+      })
+      // 探测失败时视为无 Key，走手动模式
+      .catch(() => { if (alive) { setHasApiKey(false); setShowManual(true) } })
     return () => { alive = false }
   }, [sessionId])
-
-  // 手动绘图模式：SQL 输入 + 执行
-  const [sql, setSql] = useState('')
-  const [manualLoading, setManualLoading] = useState(false)
-  const [manualError, setManualError] = useState<string | null>(null)
 
   async function runManualSql() {
     const q = sql.trim()
@@ -115,11 +122,19 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           <div className={`mode-bar ${hasApiKey ? '' : 'manual'}`}>
             <span className="mode-dot" />
             <span>{hasApiKey ? t('ai_mode', lang) : t('manual_mode', lang)}</span>
+            <span className="mode-bar-spacer" />
+            <button
+              className="btn-outline mode-toggle"
+              onClick={() => setShowManual(s => !s)}
+              disabled={!schemaLoaded}
+            >
+              {showManual ? t('close_manual', lang) : t('open_manual', lang)}
+            </button>
           </div>
         )}
 
-        {/* 手动绘图输入：未配置 API Key 时高亮展示；有 Key 时也可展开使用 */}
-        {hasApiKey === false && schemaLoaded && (
+        {/* 手动绘图输入：两种模式下都可展开；无 Key 时默认展开并高亮提示 */}
+        {showManual && schemaLoaded && (
           <div className="manual-sql-box">
             <div className="manual-sql-row">
               <textarea
