@@ -45,6 +45,7 @@ app.add_middleware(
 )
 
 from api.routes.config_api import router as config_router  # noqa: E402
+from api.routes.manual_api import router as manual_router  # noqa: E402
 from api.routes.query import router as query_router  # noqa: E402
 from api.routes.schema_api import router as schema_router  # noqa: E402
 from api.routes.system import router as system_router  # noqa: E402
@@ -53,3 +54,4 @@ app.include_router(system_router)
 app.include_router(schema_router)
 app.include_router(query_router)
 app.include_router(config_router)
+app.include_router(manual_router)

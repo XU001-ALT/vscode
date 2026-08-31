@@ -95,8 +95,12 @@ const dict = {
   failed_sql: { zh: '失败 SQL：', en: 'Failed SQL: ' },
   fixed_sql: { zh: '修复为：', en: 'Fixed to: ' },
   manual_error_title: { zh: '手动查询出错', en: 'Manual query failed' },
-  open_manual: { zh: '手动绘图 (SQL)', en: 'Manual plot (SQL)' },
+  open_manual: { zh: '手动绘图', en: 'Manual plot' },
   close_manual: { zh: '收起手动绘图', en: 'Close manual plot' },
+  manual_table: { zh: '选择数据表', en: 'Select table' },
+  manual_table_ph: { zh: '请选择一张数据表', en: 'Choose a data table' },
+  manual_cols: { zh: '列数', en: 'columns' },
+  manual_loading: { zh: '正在加载数据…', en: 'Loading data…' },
   load_schema_first: {
     zh: '正在连接数据库并加载表结构，请稍候…',
     en: 'Connecting to the database and loading schema, please wait…',

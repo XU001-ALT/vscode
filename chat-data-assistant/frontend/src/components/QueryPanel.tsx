@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { ErrorCode, Lang, QueryResult } from '../types'
-import { getLlmConfig, runQuery, runSql } from '../api'
+import { getLlmConfig, runQuery } from '../api'
 import { t, type TKey } from '../i18n'
 import ChartView from './ChartView'
 import DataResultView from './DataResultView'
+import ManualPlotter from './ManualPlotter'
 
 function errKey(code?: string | null): TKey {
   const known: ErrorCode[] = [
@@ -25,11 +26,8 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
   const [result, setResult] = useState<QueryResult | null>(null)
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
 
-  // 手动绘图模式：SQL 输入 + 执行（两种模式下均可展开）
+  // 手动绘图模式：两种模式下均可展开
   const [showManual, setShowManual] = useState(false)
-  const [sql, setSql] = useState('')
-  const [manualLoading, setManualLoading] = useState(false)
-  const [manualError, setManualError] = useState<string | null>(null)
 
   // 探测当前会话是否已配置 API Key（服务端内存 Key 或全局配置）
   useEffect(() => {
@@ -48,34 +46,10 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
     return () => { alive = false }
   }, [sessionId])
 
-  async function runManualSql() {
-    const q = sql.trim()
-    if (!q || manualLoading || loading) return
-    setManualLoading(true)
-    setManualError(null)
-    // 手动模式无需任何 Key 依赖；复用同一结果区渲染
-    try {
-      const r = await runSql(q)
-      if (!r.ok) {
-        setManualError(r.error)
-        setResult(null)
-      } else {
-        setResult({ ...r, intent: 'chart' as const, recommendation: null, answer: null })
-      }
-    } catch (e) {
-      setManualError(String(e))
-      setResult(null)
-    } finally {
-      setManualLoading(false)
-    }
-  }
-
   async function submit() {
     const q = question.trim()
     if (!q || loading) return
     setLoading(true)
-    // 清除手动模式残留错误 / 数据
-    setManualError(null)
     try {
       const r = await runQuery(sessionId, q, lang)
       setResult(r)
@@ -133,22 +107,10 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           </div>
         )}
 
-        {/* 手动绘图输入：两种模式下都可展开；无 Key 时默认展开并高亮提示 */}
+        {/* 手动绘图：两种模式下都可展开；无 Key 时默认展开并高亮提示 */}
         {showManual && schemaLoaded && (
           <div className="manual-sql-box">
-            <div className="manual-sql-row">
-              <textarea
-                value={sql}
-                rows={2}
-                placeholder={t('sql_ph', lang)}
-                onChange={e => setSql(e.target.value)}
-                className="sql-textarea"
-              />
-              <button onClick={runManualSql} disabled={manualLoading || !sql.trim() || loading}>
-                {manualLoading ? t('querying', lang) : t('run_sql', lang)}
-              </button>
-            </div>
-            <div className="hint-ok hint-manual">{t('manual_hint', lang)}</div>
+            <ManualPlotter lang={lang} />
           </div>
         )}
 
@@ -164,16 +126,9 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
             <div className="msg info">{t('load_schema_first', lang)}</div>
           )}
 
-          {!loading && schemaLoaded && !result && !manualLoading && (
+          {!loading && schemaLoaded && !result && (
             <div className="msg info">
               <div>{t('result_tips', lang)}</div>
-            </div>
-          )}
-
-          {manualError && !loading && (
-            <div className="msg error">
-              <div>{t('manual_error_title', lang)}</div>
-              <div className="err-detail">{manualError}</div>
             </div>
           )}
 

@@ -1,4 +1,4 @@
-import type { BootstrapState, LlmConfig, QueryResult } from './types'
+import type { BootstrapState, LlmConfig, ManualTable, QueryResult } from './types'
 
 // API 基础地址：通过 VITE_API_BASE_URL 环境变量配置
 // - 开发模式（Vite dev server）：留空，由 vite.config.ts 的 proxy 转发到后端
@@ -36,6 +36,16 @@ export function runQuery(sessionId: string | null, question: string, lang: strin
 // 手动绘图模式：执行只读 SQL（不走 LLM，无需 API Key）
 export function runSql(sql: string, maxRows: number = 1000): Promise<QueryResult> {
   return request('/api/sql', { method: 'POST', body: JSON.stringify({ sql, max_rows: maxRows }) })
+}
+
+// 手动可视化：业务表及列信息
+export function getManualTables(): Promise<{ ok: boolean; error?: string; tables: ManualTable[] }> {
+  return request('/api/manual/tables')
+}
+
+// 手动可视化：取指定表数据（无 LLM、无 Key）
+export function getManualRows(table: string, limit: number = 1000): Promise<QueryResult> {
+  return request('/api/manual/rows', { method: 'POST', body: JSON.stringify({ table, limit }) })
 }
 
 export function getLlmConfig(sessionId: string): Promise<LlmConfig> {
