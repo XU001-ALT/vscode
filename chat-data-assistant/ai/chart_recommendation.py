@@ -15,7 +15,17 @@ import pandas as pd
 from .llm_client import call_llm_raw
 from .prompts import build_chart_recommendation_prompt, PIE_MAX_CATEGORIES
 
-VALID_CHART_TYPES = {"line", "bar", "scatter", "pie", "area", "histogram"}
+VALID_CHART_TYPES = {
+    "line", "bar", "scatter", "pie", "area", "histogram",
+    "bubble", "scatter3d", "heatmap", "parallel", "box", "radar",
+}
+
+# 无需显式 y_col 的图表（渲染时由前端自动取全部数值列 / 指定数值列）：
+# histogram 由 x_col 决定，heatmap/parallel/radar 由数值列集合自动构建
+AUTO_COLUMN_CHARTS = {"histogram", "heatmap", "parallel", "radar"}
+
+# 需要三个数值轴（x/y/z）的图表；z_col 缺失时由前端回退到第三个数值列
+THREE_D_CHARTS = {"scatter3d"}
 
 
 def _extract_json(text: str) -> dict | None:
@@ -76,27 +86,48 @@ def _normalize_rec(data: dict) -> dict | None:
     chart_type = str(data.get("chart_type", "")).strip().lower()
     x_col = str(data.get("x_col", "")).strip()
     y_col = str(data.get("y_col", "")).strip()
+    z_col = str(data.get("z_col", "")).strip()
     reason = str(data.get("reason", "")).strip()
     if not chart_type or not x_col:
         return None
-    if not y_col and chart_type != "histogram":
+    if not y_col and chart_type not in AUTO_COLUMN_CHARTS:
         return None
-    return {"chart_type": chart_type, "x_col": x_col, "y_col": y_col, "reason": reason}
+    rec = {"chart_type": chart_type, "x_col": x_col, "y_col": y_col, "reason": reason}
+    if z_col:
+        rec["z_col"] = z_col
+    return rec
 
 
 def _valid_rec(df: pd.DataFrame, rec: dict) -> bool:
     """校验 LLM 推荐是否可在当前结果集上安全渲染（dtype 级别）。"""
     chart_type = rec["chart_type"]
-    x, y = rec["x_col"], rec["y_col"]
+    x = rec.get("x_col", "") or ""
+    y = rec.get("y_col", "") or ""
+    z = rec.get("z_col", "") or ""
+    numeric = [c for c in df.columns if _is_numeric_col(df, c)]
 
     if chart_type not in VALID_CHART_TYPES:
         return False
+
+    # 直方图：单个数值列的分布，x_col 决定，y_col 不使用
+    if chart_type == "histogram":
+        return x in df.columns and _is_scalar_col(df, x) and _is_numeric_col(df, x)
+    # 多指标自动类：heatmap/parallel 自动使用全部数值列，radar 至少一个指标
+    if chart_type in ("heatmap", "parallel"):
+        return len(numeric) >= 2
+    if chart_type == "radar":
+        return len(numeric) >= 1
+
     if x not in df.columns:
         return False
 
-    if chart_type == "histogram":
-        # 直方图：单个数值列的分布，y_col 不使用
-        return _is_scalar_col(df, x) and _is_numeric_col(df, x)
+    if chart_type in THREE_D_CHARTS:
+        # 三维散点：X/Y 必须是数值列，Z 缺失时由前端回退到第三个数值列
+        if y not in df.columns or x not in numeric or y not in numeric:
+            return False
+        if z and (z not in df.columns or z not in numeric):
+            return False
+        return len(numeric) >= 3
 
     if x == y:
         return False
@@ -112,8 +143,16 @@ def _valid_rec(df: pd.DataFrame, rec: dict) -> bool:
             return False
         if _safe_nunique(df, x) > PIE_MAX_CATEGORIES:
             return False
+    elif chart_type == "bubble":
+        # 气泡散点：X/Y 都应为数值，气泡大小由前端另选
+        if not _is_numeric_col(df, x) or not _is_numeric_col(df, y):
+            return False
+    elif chart_type == "box":
+        # 箱线图：Y 必须是数值列（X 为分类或数值均可）
+        if not _is_numeric_col(df, y):
+            return False
     else:
-        # 折线/柱状/散点：Y 轴必须是数值列，否则 plotly 无法渲染
+        # 折线/柱状/散点/面积：Y 轴必须是数值列，否则 plotly 无法渲染
         if not _is_numeric_col(df, y):
             return False
     return True

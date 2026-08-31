@@ -39,12 +39,15 @@ class QueryOutcome(NamedTuple):
         error: 错误信息（成功时为 None）
         intent: 解析出的意图 "chart" / "data" / "chat"
         message: chat 意图时模型的说明文字，其余意图为 None
+        corrections: SQL 自动修复记录列表（供界面展示），每项含
+            attempt 序号 / failed_sql 失败 SQL / error 错误 / fixed_sql 修正后 SQL
     """
     sql: str
     df: object | None
     error: str | None
     intent: str
     message: str | None
+    corrections: list | None = None
 
 
 def extract_intent(reply_text: str) -> str:
@@ -151,6 +154,9 @@ def to_sql_with_correction(
     system = build_system_prompt(lang=lang)
     prompt = build_prompt(schema_summary, chat_history, user_query)
 
+    # SQL 自动修复记录（随 QueryOutcome 返回，供界面"自动修复记录"展示）
+    corrections: list[dict] = []
+
     # 多表场景分配更多 token（JOIN SQL + 说明文字更长）
     table_count = _count_tables_in_schema(schema_summary)
     first_attempt_tokens = MULTI_TABLE_MAX_TOKENS if table_count >= 3 else 2048
@@ -163,13 +169,17 @@ def to_sql_with_correction(
     # chat 意图：不生成/执行 SQL，直接返回说明文字，避免空跑校验与纠错循环
     if intent == "chat":
         return QueryOutcome(sql="", df=None, error=None,
-                            intent="chat", message=_clean_chat_message(raw))
+                            intent="chat", message=_clean_chat_message(raw),
+                            corrections=corrections)
 
     sql = _normalize_response_text(raw)
 
     valid, err_msg = validate_sql(sql)
     if not valid:
         # LLM 没直接给出合法 SQL（可能只回了文字说明），让 LLM 修正一次
+        corrections.append({"attempt": len(corrections) + 1,
+                            "failed_sql": sql or "(空)",
+                            "error": f"未生成合法 SQL: {err_msg}"})
         prompt = build_correction_prompt(
             user_query=user_query,
             failed_sql=sql or "(空)",
@@ -183,21 +193,27 @@ def to_sql_with_correction(
         if not valid2:
             return QueryOutcome(sql=sql, df=None,
                                 error=_no_valid_sql_message(err_msg2),
-                                intent=intent, message=None)
+                                intent=intent, message=None,
+                                corrections=corrections)
+        corrections[-1]["fixed_sql"] = sql
 
     # 执行 SQL
     df, exec_err = execute_fn(sql)
     if exec_err is None:
-        return QueryOutcome(sql=sql, df=df, error=None, intent=intent, message=None)
+        return QueryOutcome(sql=sql, df=df, error=None, intent=intent,
+                            message=None, corrections=corrections)
     if DB_BUSY_MARKER in exec_err:
         # 数据库过载（连接池满）：纠错重试无法解决，快速失败避免拖长响应
         return QueryOutcome(sql=sql, df=None, error=exec_err,
-                            intent=intent, message=None)
+                            intent=intent, message=None, corrections=corrections)
 
     # Self-Correction 循环
     current_sql = sql
     current_error = exec_err
     for attempt in range(MAX_CORRECTION_RETRIES):
+        corrections.append({"attempt": len(corrections) + 1,
+                            "failed_sql": current_sql,
+                            "error": current_error})
         correction_prompt = build_correction_prompt(
             user_query=user_query,
             failed_sql=current_sql,
@@ -212,20 +228,21 @@ def to_sql_with_correction(
         if not valid:
             return QueryOutcome(sql=corrected_sql, df=None,
                                 error=_no_valid_sql_message(err_msg, attempt + 1),
-                                intent=intent, message=None)
+                                intent=intent, message=None, corrections=corrections)
 
         df, exec_err = execute_fn(corrected_sql)
         if exec_err is None:
+            corrections[-1]["fixed_sql"] = corrected_sql
             return QueryOutcome(sql=corrected_sql, df=df, error=None,
-                                intent=intent, message=None)
+                                intent=intent, message=None, corrections=corrections)
         if DB_BUSY_MARKER in exec_err:
             return QueryOutcome(sql=corrected_sql, df=None, error=exec_err,
-                                intent=intent, message=None)
+                                intent=intent, message=None, corrections=corrections)
 
         current_sql = corrected_sql
         current_error = exec_err
 
     return QueryOutcome(sql=current_sql, df=None,
                         error=f"SQL 执行失败（已重试 {MAX_CORRECTION_RETRIES} 次）: {current_error}",
-                        intent=intent, message=None)
+                        intent=intent, message=None, corrections=corrections)
 

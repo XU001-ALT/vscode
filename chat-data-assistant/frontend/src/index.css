@@ -320,6 +320,166 @@ body {
   margin-bottom: 8px;
 }
 
+/* ── 结果工具栏：数据表 / 重置 / 导出 PNG ── */
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.btn-outline {
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+.btn-outline:hover { background: var(--hover); }
+.btn-outline:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── 数据表 ── */
+.table-wrap {
+  max-height: 42vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.data-table th, .data-table td {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+.data-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-solid);
+  color: var(--text-dim);
+  font-weight: 600;
+  z-index: 1;
+}
+.data-table tbody tr:nth-child(even) { background: var(--hover); }
+
+/* ── 折叠：查看 SQL 与自动修复记录 ── */
+.sql-box {
+  margin-top: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+}
+.sql-box summary {
+  cursor: pointer;
+  color: var(--accent);
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+.sql-code {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  overflow: auto;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.78rem;
+  margin: 8px 0;
+}
+.sql-box-sub { margin-top: 4px; }
+.sql-sub-title {
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+}
+.corr-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 9px;
+  margin-bottom: 6px;
+  background: var(--input-bg);
+}
+.corr-attempt {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+.corr-line {
+  font-size: 0.78rem;
+  margin-bottom: 3px;
+  word-break: break-all;
+}
+.corr-line code { font-family: Consolas, monospace; }
+.corr-label { font-weight: 600; margin-right: 4px; }
+.corr-label.err { color: var(--err); }
+.corr-label.ok { color: var(--ok); }
+
+/* ── 模式指示条 ── */
+.mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  color: var(--ok);
+  padding: 7px 16px;
+  background: rgba(52, 211, 153, 0.08);
+  border-bottom: 1px solid var(--border);
+}
+.mode-bar.manual { color: var(--warn); background: rgba(251, 191, 36, 0.08); }
+.mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* ── 手动 SQL 输入 ── */
+.manual-sql-box {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(251, 191, 36, 0.05);
+}
+.manual-sql-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.sql-textarea {
+  flex: 1;
+  resize: vertical;
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.84rem;
+  outline: none;
+  min-height: 42px;
+}
+.sql-textarea:focus { border-color: var(--accent); }
+.manual-sql-row button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+.manual-sql-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+.hint-manual { font-size: 0.78rem; margin-top: 6px; }
+
 /* ── 配置区（折叠面板） ── */
 .config-section {
   border-bottom: 1px solid var(--border);

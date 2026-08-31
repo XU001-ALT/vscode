@@ -426,9 +426,10 @@ def build_chart_recommendation_prompt(
 ## 要求
 请用以下 JSON 格式输出（不要其他内容）:
 ```json
-{{"chart_type": "line|area|bar|scatter|pie|histogram",
+{{"chart_type": "line|bar|scatter|pie|area|histogram|bubble|scatter3d|heatmap|parallel|box|radar",
  "x_col": "列名（histogram 时填数值列名）",
- "y_col": "列名（histogram 时留空字符串）",
+ "y_col": "列名（histogram/heatmap/parallel/radar 时可为空字符串）",
+ "z_col": "列名（仅 scatter3d 需要第三数值列，其他类型留空）",
  "reason": "推荐理由（中文，一句话）"}}
 ```
 
@@ -439,13 +440,21 @@ def build_chart_recommendation_prompt(
 - scatter: 双数值列相关性（X、Y 都应为数值）
 - pie: 占比/比例数据（X 为类别，Y 为数值）。**分类不超过 7 个**，超过时合并小项为"其他"；结果按数值降序排列
 - histogram: 单个数值列的分布/区间集中情况（x_col 填该数值列，y_col 留空）
+- bubble: 气泡散点，双数值列相关性并强调数值大小（X、Y 都是数值，气泡大小由前端选第三数值列）
+- scatter3d: 三维散点，三个数值列的空间分布（x_col/y_col/z_col 都必须是数值列）
+- heatmap: 相关性/矩阵热力图，自动使用全部数值列（x_col/y_col 可留默认，前端自动构建相关性矩阵）
+- parallel: 平行坐标，多数值指标横向对比（自动使用全部数值列）
+- box: 箱线图，某数值指标的分组分布（X 为分组类别列或数值列，Y 为数值列）
+- radar: 雷达图，少数几条记录（如前 N 名材料）的多指标对比（自动使用各数值列）
 
 ## 硬性约束
-1. x_col 和 y_col 必须是上面列信息中真实存在的列名
-2. 除 pie 和 histogram 外，y_col 必须是"数值"类型列
+1. x_col / y_col / z_col 必须是上面列信息中真实存在的列名
+2. 除 pie / histogram / heatmap / parallel / radar 外，y_col 必须是"数值"类型列
 3. pie 的 x_col 唯一值数不能超过 {PIE_MAX_CATEGORIES} 个；若超过，请在 SQL 中用 CASE WHEN 合并小项
-4. 除 histogram 外，x_col 与 y_col 不能相同
-5. 用户问题关注"分布""集中在什么范围""区间"时优先 histogram
+4. x_col 与 y_col 不能相同（heatmap/parallel/radar 除外）
+5. scatter3d 的 x_col/y_col/z_col 都必须是数值列，且三者互不相同
+6. 用户问题关注"分布""集中在什么范围""区间"时优先 histogram
+7. 用户问题强调"相关""关联""关系"时优先 heatmap；强调"对比多指标""综合比较"时优先 radar 或 parallel
 """
 
 

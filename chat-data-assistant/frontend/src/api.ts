@@ -33,6 +33,11 @@ export function runQuery(sessionId: string | null, question: string, lang: strin
   return request('/api/query', { method: 'POST', body: JSON.stringify({ session_id: sessionId, question, lang }) })
 }
 
+// 手动绘图模式：执行只读 SQL（不走 LLM，无需 API Key）
+export function runSql(sql: string, maxRows: number = 1000): Promise<QueryResult> {
+  return request('/api/sql', { method: 'POST', body: JSON.stringify({ sql, max_rows: maxRows }) })
+}
+
 export function getLlmConfig(sessionId: string): Promise<LlmConfig> {
   return request(`/api/config/llm/${sessionId}`)
 }

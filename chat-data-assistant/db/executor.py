@@ -18,6 +18,18 @@ DANGEROUS_KEYWORDS = [
 # 只读操作前缀
 READONLY_PREFIXES = ["SELECT", "WITH", "EXPLAIN", "SHOW", "DESCRIBE", "DESC"]
 
+# 非业务表：不进入 LLM schema 与界面展示（日志/系统统计表，与数据分析无关）
+SCHEMA_IGNORE_PREFIXES = ("log_", "alembic_")
+SCHEMA_IGNORE_TABLES = {"user", "users", "visit_count"}
+
+
+def is_business_table(table_name: str) -> bool:
+    """判断表是否属于业务数据表（排除日志/系统表）。"""
+    name = (table_name or "").lower()
+    if name.startswith(SCHEMA_IGNORE_PREFIXES):
+        return False
+    return name not in SCHEMA_IGNORE_TABLES
+
 
 def check_sql_safety(sql: str) -> None:
     """简单SQL安全校验"""
@@ -116,14 +128,14 @@ def execute_sql_safe(sql: str, max_rows: int = 1000) -> tuple[pd.DataFrame | Non
 
 
 def get_table_list() -> list[str]:
-    """获取所有用户表名"""
+    """获取所有业务表名（排除日志/系统表）"""
     engine = get_engine()
     with engine.connect() as conn:
         result = conn.execute(text(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema = 'public' ORDER BY table_name"
         ))
-        return [row[0] for row in result]
+        return [row[0] for row in result if is_business_table(row[0])]
 
 
 def get_table_schema(table_name: str) -> pd.DataFrame:
@@ -146,7 +158,7 @@ def fetch_full_schema() -> str:
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema = 'public' ORDER BY table_name"
         ))
-        tables = [row[0] for row in result]
+        tables = [row[0] for row in result if is_business_table(row[0])]
 
         for table in tables:
             result = conn.execute(text(

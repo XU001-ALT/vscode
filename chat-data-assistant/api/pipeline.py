@@ -71,6 +71,7 @@ def run_query(schema_summary: str, history: list[dict], question: str,
         "recommendation": recommendation,
         "answer": answer,
         "intent": outcome.intent,
+        "corrections": outcome.corrections or [],
         **_dataframe_payload(outcome.df),
     }
 

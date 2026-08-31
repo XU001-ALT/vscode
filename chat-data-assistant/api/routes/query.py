@@ -34,7 +34,8 @@ def query(req: QueryRequest):
     if not question:
         return {"ok": False, "error_code": "empty_question", "error": "问题不能为空",
                 "sql": None, "columns": [], "rows": [], "row_count": 0,
-                "recommendation": None, "answer": None, "intent": None}
+                "recommendation": None, "answer": None, "intent": None,
+                "corrections": []}
 
     session_id = req.session_id or sessions.create()
     schema_summary, _ = get_schema()
@@ -42,7 +43,8 @@ def query(req: QueryRequest):
         return {"ok": False, "error_code": "no_schema",
                 "error": "数据库表结构尚未就绪，系统正在连接数据库，请稍后重试",
                 "sql": None, "columns": [], "rows": [], "row_count": 0,
-                "recommendation": None, "answer": None, "intent": None}
+                "recommendation": None, "answer": None, "intent": None,
+                "corrections": []}
 
     history = sessions.get_history(session_id)
     session_llm = sessions.get(session_id)["llm"]
@@ -55,7 +57,7 @@ def query(req: QueryRequest):
         detail = sanitize_error(str(e))
         result = {"sql": None, "error": detail, "columns": [],
                   "rows": [], "row_count": 0, "recommendation": None,
-                  "answer": None, "intent": None}
+                  "answer": None, "intent": None, "corrections": []}
 
     error = result.get("error")
     result["ok"] = error is None
@@ -77,3 +79,46 @@ def query(req: QueryRequest):
                                 sql=result.get("sql"))
 
     return result
+
+
+class SqlRequest(BaseModel):
+    sql: str
+    max_rows: int | None = 1000
+
+
+@router.post("/sql")
+def manual_sql(req: SqlRequest):
+    """手动绘图模式：执行一条只读 SQL 返回数据（不走 LLM，不依赖 API Key）。
+
+    仅允许 SELECT/WITH/EXPLAIN 等只读查询，安全校验与 AI 模式一致。
+    """
+    sql = (req.sql or "").strip()
+
+    def fail(err: str):
+        return {"ok": False, "sql": sql, "error": err,
+                "columns": [], "rows": [], "row_count": 0}
+
+    if not sql:
+        return fail("SQL 语句不能为空")
+
+    from core import bootstrap
+    if not bootstrap.get_state()["done"]:
+        return fail("数据库表结构尚未就绪，正在连接数据库，请稍后重试")
+
+    try:
+        from db.executor import execute_sql_safe
+        df, err = execute_sql_safe(sql, max_rows=req.max_rows or 1000)
+    except Exception as e:
+        from core.secrets import sanitize_error
+        return fail(sanitize_error(str(e)))
+
+    if err:
+        return fail(err)
+
+    if df is None:
+        return fail("查询未返回数据")
+
+    from api.serializers import df_to_json
+    columns, rows = df_to_json(df)
+    return {"ok": True, "sql": sql, "error": None,
+            "columns": columns, "rows": rows, "row_count": len(df)}

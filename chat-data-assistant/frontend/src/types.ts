@@ -1,7 +1,12 @@
+export type ChartType =
+  | 'line' | 'bar' | 'scatter' | 'pie' | 'area' | 'histogram'
+  | 'bubble' | 'scatter3d' | 'heatmap' | 'parallel' | 'box' | 'radar'
+
 export interface ChartRecommendation {
-  chart_type: 'line' | 'bar' | 'scatter' | 'pie' | 'area' | 'histogram'
+  chart_type: ChartType
   x_col: string
   y_col: string
+  z_col?: string
   reason: string
 }
 
@@ -11,6 +16,13 @@ export type ErrorCode =
   | 'unknown'
 
 export type QueryIntent = 'chart' | 'data' | 'chat'
+
+export interface SqlCorrection {
+  attempt: number
+  failed_sql: string
+  error: string
+  fixed_sql?: string
+}
 
 export interface QueryResult {
   ok: boolean
@@ -22,6 +34,7 @@ export interface QueryResult {
   rows: unknown[][]
   row_count: number
   recommendation: ChartRecommendation | null
+  corrections?: SqlCorrection[] | null
   answer?: string | null   // chat 回应或问数模式的批量数据拒绝提醒
   intent?: QueryIntent | null
 }
