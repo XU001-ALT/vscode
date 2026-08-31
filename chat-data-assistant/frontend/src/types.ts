@@ -39,18 +39,6 @@ export interface QueryResult {
   intent?: QueryIntent | null
 }
 
-export interface ManualColumn {
-  name: string
-  data_type: string
-  numeric: boolean
-  categorical: boolean
-}
-
-export interface ManualTable {
-  name: string
-  columns: ManualColumn[]
-}
-
 export interface DbStatus {
   connected: boolean
   done: boolean

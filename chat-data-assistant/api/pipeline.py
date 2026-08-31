@@ -26,15 +26,23 @@ _AGG_RE = re.compile(
 )
 
 _BULK_REFUSE = {
-    "zh": "抱歉，无法进行批量操作。问数模式仅支持查询最大值、最小值、平均值等单行统计特例值，请换个问法试试。",
-    "en": ("Sorry, bulk operations are not supported. Query mode only returns "
-           "single-row statistics such as max, min, and average — please rephrase your question."),
+    "zh": "出于数据保护，我只能返回单值统计结论（如最高值、最低值、平均值、数量等单行特例值），无法返回明细数据、多行列表或图表。请换个问法，例如询问“最高温度是多少”。",
+    "en": ("For data protection, I can only return single-value statistics (max, min, "
+           "average, count — a single exceptional value) and cannot return detailed rows, "
+           "lists, or charts. Please rephrase, e.g. 'what is the maximum temperature?'"),
 }
 
 
 def run_query(schema_summary: str, history: list[dict], question: str,
               session_llm: dict, lang: str = "zh") -> dict:
-    """执行一次完整查询，返回 JSON 友好的结果字典。"""
+    """执行一次查询，返回 JSON 友好的结果字典。
+
+    以保护数据为前提：不生成图表、不返回明细数据，也不暴露 SQL。
+    所有查询只输出可安全展示的结论：
+    - chat 意图：直接返回说明文字（answer）
+    - 其余意图：强制收敛为单行统计特例值（MAX/MIN/AVG 等），以文字结论展示；
+      若 SQL 不含聚合或返回多行（会被视为试图拉取明细数据），一律拒绝。
+    """
     llm_cfg = {f: session_llm.get(f) or "" for f in _LLM_CFG_FIELDS}
 
     outcome = to_sql_with_correction(
@@ -46,44 +54,48 @@ def run_query(schema_summary: str, history: list[dict], question: str,
         lang=lang,
     )
 
-    answer = None
-    recommendation = None
+    # 只输出文字结论：绝不生成图表、绝不返回明细数据、绝不暴露 SQL。
     if outcome.intent == "chat":
-        answer = outcome.message
-    elif outcome.intent == "data" and outcome.error is None and outcome.df is not None:
-        # 兜底拒绝两种情况（不向客户端返回任何明细行）：
-        # 1. SQL 完全不含聚合函数 —— 明细拉取
-        # 2. 结果多于一行 —— GROUP BY 等多行分组统计同样视为批量操作
-        if not _AGG_RE.search(outcome.sql or "") or len(outcome.df) > 1:
-            answer = _BULK_REFUSE.get(lang, _BULK_REFUSE["zh"])
-            outcome = outcome._replace(df=None)
-    elif outcome.error is None and outcome.df is not None and not outcome.df.empty:
-        from ai.chart_recommendation import recommend_chart
-        try:
-            recommendation = recommend_chart(outcome.df, question, outcome.sql,
-                                             llm_cfg=llm_cfg)
-        except Exception:
-            recommendation = None
+        # 寒暄/超范围回应：说明文字
+        return {
+            "sql": None, "error": None, "recommendation": None,
+            "answer": outcome.message, "intent": "chat",
+            "corrections": None,
+            "columns": [], "rows": [], "row_count": 0,
+        }
 
+    # 非 chat 意图：可安全展示的仅为「单行统计特例值」数据统计摘要，
+    # SQL 不含聚合或返回多行（试图拉取明细）一律拒绝。
+    refuse = _BULK_REFUSE.get(lang, _BULK_REFUSE["zh"])
+    df = outcome.df
+    if outcome.error is not None:
+        return {
+            "sql": None,
+            "error": sanitize_error(outcome.error),
+            "recommendation": None, "answer": None, "intent": "data",
+            "corrections": None,
+            "columns": [], "rows": [], "row_count": 0,
+        }
+    if df is None or not _AGG_RE.search(outcome.sql or "") or len(df) != 1:
+        # 无法给出单值统计结论：拒绝（例如批量/明细类请求）
+        return {
+            "sql": None, "error": None, "recommendation": None,
+            "answer": refuse, "intent": "data",
+            "corrections": None,
+            "columns": [], "rows": [], "row_count": 0,
+        }
+
+    # 允许返回：仅 1 行的聚合统计摘要（MAX/MIN/AVG 等特例值，作为文字结论展示）
+    from api.serializers import df_to_json
+    columns, rows = df_to_json(df)
     return {
-        "sql": outcome.sql,
-        "error": sanitize_error(outcome.error) if outcome.error else None,
-        "recommendation": recommendation,
-        "answer": answer,
-        "intent": outcome.intent,
-        "corrections": outcome.corrections or [],
-        **_dataframe_payload(outcome.df),
+        "sql": None, "error": None, "recommendation": None,
+        "answer": None, "intent": "data",
+        "corrections": None,
+        "columns": columns, "rows": rows, "row_count": len(df),
     }
 
 
 def execute_sql_safe(sql: str):
     from db.executor import execute_sql_safe as _exec
     return _exec(sql)
-
-
-def _dataframe_payload(df) -> dict:
-    if df is None:
-        return {"columns": [], "rows": [], "row_count": 0}
-    from api.serializers import df_to_json
-    columns, rows = df_to_json(df)
-    return {"columns": columns, "rows": rows, "row_count": len(df)}

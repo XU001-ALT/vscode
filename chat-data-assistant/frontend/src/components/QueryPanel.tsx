@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ErrorCode, Lang, QueryResult } from '../types'
-import { getLlmConfig, runQuery } from '../api'
+import { runQuery } from '../api'
 import { t, type TKey } from '../i18n'
-import ChartView from './ChartView'
 import DataResultView from './DataResultView'
-import ManualPlotter from './ManualPlotter'
 
 function errKey(code?: string | null): TKey {
   const known: ErrorCode[] = [
@@ -24,27 +22,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
-  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
-
-  // 手动绘图模式：两种模式下均可展开
-  const [showManual, setShowManual] = useState(false)
-
-  // 探测当前会话是否已配置 API Key（服务端内存 Key 或全局配置）
-  useEffect(() => {
-    if (!sessionId) return
-    let alive = true
-    getLlmConfig(sessionId)
-      .then(cfg => {
-        if (!alive) return
-        const k = !!cfg.key_masked
-        setHasApiKey(k)
-        // 无 Key 时默认展开手动绘图，有 Key 时默认收起（可手动展开）
-        setShowManual(!k)
-      })
-      // 探测失败时视为无 Key，走手动模式
-      .catch(() => { if (alive) { setHasApiKey(false); setShowManual(true) } })
-    return () => { alive = false }
-  }, [sessionId])
 
   async function submit() {
     const q = question.trim()
@@ -91,29 +68,6 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       <div className="result-area">
         <div className="panel-title result-title">{t('result_area', lang)}</div>
 
-        {/* 模式指示条：无 Key → 手动绘图模式；有 Key → AI 增强绘图模式 */}
-        {hasApiKey !== null && (
-          <div className={`mode-bar ${hasApiKey ? '' : 'manual'}`}>
-            <span className="mode-dot" />
-            <span>{hasApiKey ? t('ai_mode', lang) : t('manual_mode', lang)}</span>
-            <span className="mode-bar-spacer" />
-            <button
-              className="btn-outline mode-toggle"
-              onClick={() => setShowManual(s => !s)}
-              disabled={!schemaLoaded}
-            >
-              {showManual ? t('close_manual', lang) : t('open_manual', lang)}
-            </button>
-          </div>
-        )}
-
-        {/* 手动绘图：两种模式下都可展开；无 Key 时默认展开并高亮提示 */}
-        {showManual && schemaLoaded && (
-          <div className="manual-sql-box">
-            <ManualPlotter lang={lang} />
-          </div>
-        )}
-
         <div className="result-body">
           {loading && (
             <div className="loading-block">
@@ -138,41 +92,20 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
               <div className="err-detail">{result.error}</div>
             </div>
           )}
-          {result && !result.error && !result.answer && result.row_count === 0 && !loading && (
-            <div className="msg info">{t('rows_returned', lang)}0{t('rows_unit', lang)}</div>
-          )}
 
+          {/* 文字结论：chat 回应或数据保护拒绝说明 */}
           {result?.answer && !result.error && !loading && (
             <div className="ai-answer ai-answer-chat">
               <div className="ai-answer-body">{result.answer}</div>
             </div>
           )}
 
-          {/* 问数模式：聚合结果以回答框/表格直接展示（不返回明细数据，也不展示绘图界面） */}
-          {result && result.intent === 'data' && result.columns.length > 0 && !result.error && !loading && (
+          {/* 单值统计结论：后端仅返回一行聚合特例值（MAX/MIN/AVG/COUNT），以文字形式展示 */}
+          {result && result.intent === 'data' && result.columns.length > 0 &&
+            result.rows.length === 1 && !result.error && !loading && (
             <DataResultView columns={result.columns} rows={result.rows} lang={lang} />
           )}
-
-          {/* 绘图模式：表格 + 图表（AI 推荐或手动 SQL 共享同一渲染） */}
-          {result && result.columns.length > 0 && result.intent === 'chart' && (
-            <ChartView
-              columns={result.columns}
-              rows={result.rows}
-              recommendation={result.recommendation}
-              lang={lang}
-              sql={result.sql}
-              corrections={result.corrections}
-            />
-          )}
         </div>
-
-        {result && result.columns.length > 0 && (
-          <div style={{ padding: '8px 18px 12px' }}>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
-              {t('rows_returned', lang)}{result.row_count}{t('rows_unit', lang)}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   )
