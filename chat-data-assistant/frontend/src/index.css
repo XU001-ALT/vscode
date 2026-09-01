@@ -136,12 +136,14 @@ body {
 
 /* 隐藏滚动条（保留滚动功能），与介绍区观感一致 */
 .scroll-y,
-.result-body {
+.result-body,
+.result-area {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 .scroll-y::-webkit-scrollbar,
-.result-body::-webkit-scrollbar {
+.result-body::-webkit-scrollbar,
+.result-area::-webkit-scrollbar {
   display: none;
   width: 0;
 }
