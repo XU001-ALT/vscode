@@ -2,7 +2,9 @@ import { useState } from 'react'
 import type { ErrorCode, Lang, QueryResult } from '../types'
 import { runQuery } from '../api'
 import { t, type TKey } from '../i18n'
+import ChartView from './ChartView'
 import DataResultView from './DataResultView'
+import ManualPlotter from './ManualPlotter'
 
 function errKey(code?: string | null): TKey {
   const known: ErrorCode[] = [
@@ -22,6 +24,9 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
+
+  // 手动绘图模式：两种模式下均可展开
+  const [showManual, setShowManual] = useState(false)
 
   async function submit() {
     const q = question.trim()
@@ -66,7 +71,23 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
       </div>
 
       <div className="result-area">
-        <div className="panel-title result-title">{t('result_area', lang)}</div>
+        <div className="panel-title result-title">
+          <span>{t('result_area', lang)}</span>
+          <button
+            className="btn-outline mode-toggle"
+            onClick={() => setShowManual(s => !s)}
+            disabled={!schemaLoaded}
+          >
+            {showManual ? t('close_manual', lang) : t('open_manual', lang)}
+          </button>
+        </div>
+
+        {/* 手动绘图：独立展开，绘制图表但不展示明细数据/SQL */}
+        {showManual && schemaLoaded && (
+          <div className="manual-sql-box">
+            <ManualPlotter lang={lang} />
+          </div>
+        )}
 
         <div className="result-body">
           {loading && (
@@ -93,17 +114,26 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
             </div>
           )}
 
-          {/* 文字结论：chat 回应或数据保护拒绝说明 */}
           {result?.answer && !result.error && !loading && (
             <div className="ai-answer ai-answer-chat">
               <div className="ai-answer-body">{result.answer}</div>
             </div>
           )}
 
-          {/* 单值统计结论：后端仅返回一行聚合特例值（MAX/MIN/AVG/COUNT），以文字形式展示 */}
+          {/* 问数模式：仅展示单行聚合结论（文字），不展示明细数据 */}
           {result && result.intent === 'data' && result.columns.length > 0 &&
             result.rows.length === 1 && !result.error && !loading && (
             <DataResultView columns={result.columns} rows={result.rows} lang={lang} />
+          )}
+
+          {/* 绘图模式：渲染图表，不展示明细数据表与 SQL */}
+          {result && result.columns.length > 0 && result.intent === 'chart' && (
+            <ChartView
+              columns={result.columns}
+              rows={result.rows}
+              recommendation={result.recommendation}
+              lang={lang}
+            />
           )}
         </div>
       </div>

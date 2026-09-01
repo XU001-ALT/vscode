@@ -17,16 +17,16 @@ const dict = {
     en: 'The platform combines database structure understanding, intelligent query generation, and data visualization, enabling users to complete the entire workflow from querying to analysis without writing complex SQL.',
   },
   intro_p3: {
-    zh: '在「配置区」可以设置 API、查看数据库连接、管理 Schema，并通过「数据使用声明」了解各数据表的情况；在「对话绘图区」提交自然语言查询，即可获得数据结论。为保护数据，本平台不展示图表与明细数据，仅返回安全的统计结论。',
-    en: "In the 'Config' panel you can manage API settings, check database connections, manage schema, and learn about each data table via the 'Data Usage Guide'. In the 'Chat & Plot' panel, submit natural-language queries to get data conclusions. For data protection, the platform does not display charts or detailed rows — only safe statistical conclusions are returned.",
+    zh: '在「配置区」可以设置 API、查看数据库连接、管理 Schema，并通过「数据使用声明」了解各数据表的情况；在「对话绘图区」提交自然语言查询，即可获得数据结果与可视化分析。',
+    en: "In the 'Config' panel you can manage API settings, check database connections, manage schema, and learn about each data table via the 'Data Usage Guide'. In the 'Chat & Plot' panel, submit natural-language queries to get results with visual analysis.",
   },
   intro_p4: {
-    zh: '平台支持自然语言查询：在「对话绘图区」用一句话提问，AI 即可自动生成查询并返回数据结论，例如最高温度、平均值、记录数量等单值统计结果。出于数据保护，明细数据、多行列表与图表均不会对外展示。',
-    en: 'The platform supports natural-language querying: ask a question in the Chat & Plot panel and the AI automatically runs the query and returns a data conclusion, such as max/min/average values or record counts. For data protection, detailed rows, multi-row lists, and charts are never shown externally.',
+    zh: '平台支持自然语言查询：在「对话绘图区」用一句话提问，AI 即可自动生成并执行 SQL 返回数据；并提供 12 种图表——折线图、柱状图、散点图、气泡散点、三维散点、相关性热力图、平行坐标、箱线分布、材料雷达图、饼图和直方图、面积图，可由 AI 自动推荐配置，也可手动切换调整；未配置 API Key 时可通过手动 SQL 直接绘图。',
+    en: 'The platform supports natural-language querying: ask a question in the Chat & Plot panel and the AI automatically generates and executes SQL to return your data. Twelve chart types are available — line, bar, scatter, bubble, 3D scatter, correlation heatmap, parallel coordinates, box plot, material radar, pie, histogram, and area — with configs recommended by AI or adjustable manually. Without an API key you can still plot directly via manual SQL.',
   },
   intro_p5: {
-    zh: 'AI 会自动分析你的提问意图：可回答的统计问题直接给出结论，试图查看明细数据、批量列表或图表的请求将被拒绝并提醒。',
-    en: 'The AI analyzes your intent automatically: answerable statistics get a conclusion directly; requests for detailed rows, bulk lists, or charts are refused with a reminder.',
+    zh: 'AI 会自动分析你的提问意图：想画图时自动推荐合适的图表配置，想查数据时直接给出最大值、最小值、平均值等统计特例值，不适当或超出范围的问题会被提醒。',
+    en: "The AI analyzes your intent automatically: chart requests get a suitable chart config recommended; data questions return quick statistics such as max, min, and average directly; inappropriate or out-of-scope questions receive a reminder.",
   },
 
   // Query panel
@@ -40,8 +40,8 @@ const dict = {
   querying: { zh: '查询中…', en: 'Querying…' },
   no_chart: { zh: '要渲染图表，请先执行查询得到数据。', en: 'Run a query first to render charts.' },
   result_tips: {
-    zh: '在上方输入问题即可查询数据并得到结论。小提示：清晰具体的提问有助于 AI 准确理解你的意图，例如“实验数据中的最高温度是多少”“共有多少条实验记录”。出于数据保护，仅返回单值统计结论，不展示明细数据与图表。',
-    en: "Type a question above to query data and get a conclusion. Tip: be clear and specific, e.g. 'what is the maximum experiment temperature?' or 'how many experiment records are there?'. For data protection, only single-value statistics are returned — detailed rows and charts are not shown.",
+    zh: '在上方输入问题即可查询数据并生成图表。小提示：清晰具体的提问有助于 AI 准确理解你的意图——想绘图时可注明图表类型或关注的数据维度（如“用折线图展示温度随时间的变化”），只想查数据时直接描述所需内容；若图表未能按预期生成，通常是问法不够明确，换个更具体的说法再试即可。',
+    en: "Type a question above to query data and generate charts. Tip: clear, specific questions help the AI understand your intent — for charts, mention the chart type or data dimensions (e.g. 'show temperature over time as a line chart'); for pure data questions, just describe what you need. If a chart isn't generated as expected, the question was likely ambiguous — try rephrasing it more specifically.",
   },
   rows_returned: { zh: '已返回 ', en: 'Returned ' },
   rows_unit: { zh: ' 行数据', en: ' rows' },

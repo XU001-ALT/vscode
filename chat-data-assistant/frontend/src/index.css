@@ -252,6 +252,17 @@ body {
   border: 1px solid var(--border);
 }
 
+.result-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+.result-title .mode-toggle {
+  margin-left: 0;
+  flex: none;
+}
+
 .result-body {
   flex: 1;
   min-height: 0;
@@ -486,38 +497,108 @@ body {
 .manual-sql-row button:disabled { opacity: 0.5; cursor: not-allowed; }
 .hint-manual { font-size: 0.78rem; margin-top: 6px; }
 
-/* ── 甲方式手动绘图器（选表 → 绑轴 → 筛选） ── */
-.manual-plot { padding: 2px 0 0; }
-.manual-plot-bar {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  padding: 4px 0 12px;
+/* ── 手动绘图器（对标演示原型：硬编码领域数据，无数据表/SQL） ── */
+.manual-sql-box {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(251, 191, 36, 0.05);
 }
-.manual-table-field { margin-bottom: 0; flex: 1; }
-.manual-table-field .field label,
-.manual-table-field span {
-  display: block;
-  font-size: 0.8rem;
-  margin-bottom: 4px;
-  color: var(--text-dim);
-}
-.manual-table-field select {
-  width: 100%;
-  background: var(--input-bg);
+.manual-plot-demo {
   border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 0.88rem;
-  outline: none;
+  border-radius: 10px;
+  padding: 10px 12px 12px;
+  background: var(--panel-solid);
 }
-.manual-table-field select:focus { border-color: var(--accent); }
-.manual-colcount {
+.demo-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.demo-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.demo-heading .result-actions { margin-bottom: 0; }
+.result-actions button {
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.result-actions button:hover { background: var(--hover); }
+
+.chart-builder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+.chart-builder label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.82rem;
   color: var(--text-dim);
-  padding-bottom: 8px;
   white-space: nowrap;
+}
+.chart-builder select {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 6px;
+  font-size: 0.82rem;
+  max-width: 150px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.range-row span { white-space: nowrap; }
+.range-row input[type="range"] { width: 110px; accent-color: var(--accent); }
+.range-row output {
+  color: var(--text);
+  font-weight: 600;
+  min-width: 46px;
+}
+
+.quality-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  padding: 6px 2px 8px;
+}
+.quality-strip b { color: var(--text); font-weight: 600; margin-left: auto; }
+.quality-strip i.ok {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  margin-right: 4px;
+}
+
+.demo-chart {
+  width: 100%;
+  height: clamp(320px, 52vh, 560px);
+  background: #f2f4f9;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 9px;
+  overflow: hidden;
 }
 
 /* ── 配置区（折叠面板） ── */
