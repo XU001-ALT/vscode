@@ -250,6 +250,8 @@ body {
   flex-direction: column;
   margin: 12px 18px 16px;
   border: 1px solid var(--border);
+  overflow-y: auto;
+  /* 内容超高时在结果展示区内上下滚动，而非让图形底边越出展示区下边 */
 }
 
 .result-title {
@@ -264,9 +266,9 @@ body {
 }
 
 .result-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding: 12px 18px 14px;
 }
 
