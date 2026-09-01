@@ -152,6 +152,11 @@ export default function ManualPlotter(_props: Props) {
           line: { color: '#fff', width: 1 }, opacity: 0.86,
         },
       }]
+      layout = {
+        ...layout,
+        xaxis: { ...(layout.xaxis as Record<string, unknown>), title: { text: FIELDS[x], font: { size: 11 } } },
+        yaxis: { ...(layout.yaxis as Record<string, unknown>), title: { text: FIELDS[y], font: { size: 11 } } },
+      }
     }
     if (type === 'scatter3d') {
       traces = [{
