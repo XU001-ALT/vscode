@@ -173,6 +173,74 @@ const dict = {
     zh: '本平台仅对数据库执行只读查询（SELECT）。AI 生成的 SQL 会经过安全校验，禁止任何修改数据的操作。查询结果仅用于当前会话的可视化分析。',
     en: 'This platform only executes read-only queries (SELECT) against the database. AI-generated SQL passes security validation; any data-modifying operation is rejected. Query results are used only for visualization in the current session.',
   },
+
+  // Manual plotter (ManualPlotter.tsx)
+  manual_title: { zh: '手动绘图器', en: 'Manual Plotter' },
+  manual_chart_type: { zh: '图表类型', en: 'Chart type' },
+  manual_x_axis: { zh: '横轴', en: 'X axis' },
+  manual_y_axis: { zh: '纵轴', en: 'Y axis' },
+  manual_size: { zh: '气泡大小', en: 'Bubble size' },
+  manual_family_label: { zh: '材料体系', en: 'Material family' },
+  manual_all_families: { zh: '全部材料', en: 'All materials' },
+  manual_temp_range: { zh: '放氢温度范围', en: 'Dehydrogenation temp range' },
+  manual_deg_c: { zh: '℃', en: '°C' },
+  manual_check_fields: { zh: '字段校验', en: 'Field check' },
+  manual_check_units: { zh: '单位统一', en: 'Units standard' },
+  manual_check_safety: { zh: '安全查询', en: 'Safe query' },
+  manual_check_run: { zh: '结果试跑', en: 'Result verified' },
+  manual_records: { zh: '条材料记录', en: 'material records' },
+  manual_aria: {
+    zh: '固态储氢材料交互式图表',
+    en: 'Interactive solid-state hydrogen storage materials chart',
+  },
+  manual_filename: { zh: '固态储氢材料图表', en: 'Solid hydrogen materials chart' },
+
+  // Manual plotter field names
+  f_capacity: { zh: '质量储氢密度 (wt%)', en: 'Gravimetric capacity (wt%)' },
+  f_desorptionTemp: { zh: '放氢温度 (℃)', en: 'Desorption temp (°C)' },
+  f_absorptionTemp: { zh: '吸氢温度 (℃)', en: 'Absorption temp (°C)' },
+  f_plateauPressure: { zh: '平台压力 (bar)', en: 'Plateau pressure (bar)' },
+  f_retention: { zh: '100次循环保持率 (%)', en: 'Retention after 100 cycles (%)' },
+  f_kinetics: { zh: '吸氢动力学 t₉₀ (min)', en: 'Kinetics t₉₀ (min)' },
+  f_year: { zh: '文献年份', en: 'Publication year' },
+  f_pressure: { zh: '测试压力 (bar)', en: 'Test pressure (bar)' },
+
+  // Manual plotter material families
+  fam_mg: { zh: '镁基氢化物', en: 'Mg-based hydrides' },
+  fam_complex: { zh: '复杂氢化物', en: 'Complex hydrides' },
+  fam_alloy: { zh: '储氢合金', en: 'Metal hydride alloys' },
+  fam_mof: { zh: 'MOF/多孔材料', en: 'MOF / porous materials' },
+
+  // Manual plotter chart-type labels (line & bar differ from the AI ones)
+  manual_line_curve: { zh: '循环保持率曲线', en: 'Cycle retention curve' },
+  manual_bar_rank: { zh: '性能排名柱状图', en: 'Performance ranking bars' },
+
+  // Manual plotter chart text
+  mp_parallel_title: { zh: '多性能指标平行坐标对比', en: 'Multi-indicator parallel coordinates' },
+  mp_heatmap_title: { zh: '关键性能参数相关性热力图', en: 'Correlation heatmap of key performance parameters' },
+  mp_box_title: { zh: '不同材料体系的{{y}}分布', en: '{{y}} by material family' },
+  mp_radar_title: { zh: '候选材料多维性能雷达图', en: 'Multi-dimensional radar of candidates' },
+  mp_line_title: { zh: '高稳定性候选材料循环保持率', en: 'Cycle retention of high-stability candidates' },
+  mp_bar_title: { zh: '候选材料综合性能排名', en: 'Overall performance ranking' },
+  mp_year: { zh: '年份', en: 'Year' },
+  mp_family: { zh: '材料体系', en: 'Material family' },
+  mp_cycle: { zh: '循环次数', en: 'Cycle' },
+  mp_retention_rate: { zh: '容量保持率 (%)', en: 'Capacity retention (%)' },
+  mp_score: { zh: '综合评分', en: 'Composite score' },
+  mp_des_temp: { zh: '放氢温度 ℃', en: 'Desorption temp (°C)' },
+  mp_theta_capacity: { zh: '储氢密度', en: 'Capacity' },
+  mp_theta_low_t: { zh: '低温放氢', en: 'Low-T desorp.' },
+  mp_theta_cycle: { zh: '循环稳定性', en: 'Cycle stability' },
+  mp_theta_kinetics: { zh: '动力学', en: 'Kinetics' },
+  mp_theta_pressure: { zh: '低压性能', en: 'Low-P perform.' },
+  mp_hover: {
+    zh: '<b>{formula}</b><br>{family}<br>储氢密度 {capacity} wt%<br>放氢温度 {de} ℃<br>循环保持率 {ret}%',
+    en: '<b>{formula}</b><br>{family}<br>Capacity {capacity} wt%<br>Desorp. temp {de} °C<br>Cycle retention {ret}%',
+  },
+  mp_bar_hover: {
+    zh: '%{y}<br>综合分 %{x:.1f}<br>储氢密度 %{customdata[0]} wt%<br>保持率 %{customdata[1]}%<extra></extra>',
+    en: '%{y}<br>Score %{x:.1f}<br>Capacity %{customdata[0]} wt%<br>Retention %{customdata[1]}%<extra></extra>',
+  },
 } as const
 
 export type TKey = keyof typeof dict

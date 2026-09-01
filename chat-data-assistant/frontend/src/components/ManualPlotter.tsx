@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Plotly from 'plotly.js-dist-min'
+import { t, type TKey } from '../i18n'
+import type { Lang } from '../types'
 
 type Material = {
   id: string
@@ -60,27 +62,38 @@ const CYCLE_DATA = MATERIALS.flatMap((m, mi) => [1, 5, 10, 20, 40, 60, 80, 100].
   retention: Math.max(45, +(100 - (100 - m.retention) * (cycle / 100) - Math.sin(mi + cycle) * 0.35).toFixed(2)),
 })))
 
-const FIELDS: Record<string, string> = {
-  capacity: '质量储氢密度 (wt%)',
-  desorptionTemp: '放氢温度 (℃)',
-  absorptionTemp: '吸氢温度 (℃)',
-  plateauPressure: '平台压力 (bar)',
-  retention: '100次循环保持率 (%)',
-  kinetics: '吸氢动力学 t₉₀ (min)',
-  year: '文献年份',
-  pressure: '测试压力 (bar)',
+const FIELD_TKEY: Record<string, TKey> = {
+  capacity: 'f_capacity',
+  desorptionTemp: 'f_desorptionTemp',
+  absorptionTemp: 'f_absorptionTemp',
+  plateauPressure: 'f_plateauPressure',
+  retention: 'f_retention',
+  kinetics: 'f_kinetics',
+  year: 'f_year',
+  pressure: 'f_pressure',
 }
+const FAMILY_TKEY: Record<string, TKey> = {
+  '镁基氢化物': 'fam_mg',
+  '复杂氢化物': 'fam_complex',
+  '储氢合金': 'fam_alloy',
+  'MOF/多孔材料': 'fam_mof',
+}
+const RADAR_THETA_TKEYS: TKey[] = ['mp_theta_capacity', 'mp_theta_low_t', 'mp_theta_cycle', 'mp_theta_kinetics', 'mp_theta_pressure']
+
+const fieldLabel = (k: string, lang: Lang): string => t(FIELD_TKEY[k] ?? 'f_capacity', lang)
+const familyLabel = (raw: string, lang: Lang): string => t(FAMILY_TKEY[raw] ?? 'fam_mg', lang)
+
 const PALETTE = [[0, '#30123b'], [0.18, '#4668d8'], [0.4, '#2fc6c4'], [0.62, '#7be141'], [0.82, '#f7d23e'], [1, '#f15a24']]
 
-const CHART_TYPES: { value: string; label: string }[] = [
-  { value: 'bubble', label: '气泡散点图' },
-  { value: 'scatter3d', label: '三维散点图' },
-  { value: 'parallel', label: '平行坐标图' },
-  { value: 'heatmap', label: '相关性热力图' },
-  { value: 'box', label: '箱线分布图' },
-  { value: 'radar', label: '材料雷达图' },
-  { value: 'line', label: '循环保持率曲线' },
-  { value: 'bar', label: '性能排名柱状图' },
+const CHART_TYPES: { value: string; tkey: TKey }[] = [
+  { value: 'bubble', tkey: 'bubble' },
+  { value: 'scatter3d', tkey: 'scatter3d' },
+  { value: 'parallel', tkey: 'parallel' },
+  { value: 'heatmap', tkey: 'heatmap' },
+  { value: 'box', tkey: 'box' },
+  { value: 'radar', tkey: 'radar' },
+  { value: 'line', tkey: 'manual_line_curve' },
+  { value: 'bar', tkey: 'manual_bar_rank' },
 ]
 
 const FIELD_KEYS = ['capacity', 'desorptionTemp', 'retention', 'kinetics', 'year', 'pressure'] as const
@@ -100,10 +113,10 @@ function baseLayout(title: string): Record<string, unknown> {
 }
 
 interface Props {
-  lang: 'zh' | 'en'
+  lang: Lang
 }
 
-export default function ManualPlotter(_props: Props) {
+export default function ManualPlotter({ lang }: Props) {
   const chartRef = useRef<HTMLDivElement>(null)
   const [chartType, setChartType] = useState('bubble')
   const [xField, setXField] = useState('desorptionTemp')
@@ -133,9 +146,14 @@ export default function ManualPlotter(_props: Props) {
     const s = sizeField
     const nv = (v: Material, k: string): number => Number(v[k]) || 0
 
-    const hover = (v: Material) => `<b>${v.formula}</b><br>${v.family}<br>储氢密度 ${v.capacity} wt%<br>放氢温度 ${v.desorptionTemp} ℃<br>循环保持率 ${v.retention}%`
+    const hover = (v: Material) => t('mp_hover', lang)
+      .replace('{formula}', v.formula)
+      .replace('{family}', familyLabel(v.family, lang))
+      .replace('{capacity}', String(v.capacity))
+      .replace('{de}', String(v.desorptionTemp))
+      .replace('{ret}', String(v.retention))
     let traces: unknown[] = []
-    let layout: Record<string, unknown> = baseLayout(`${FIELDS[y]} × ${FIELDS[x]}`)
+    let layout: Record<string, unknown> = baseLayout(`${fieldLabel(y, lang)} × ${fieldLabel(x, lang)}`)
 
     if (type === 'bubble') {
       const sizes = d.map(q => nv(q, s))
@@ -148,14 +166,14 @@ export default function ManualPlotter(_props: Props) {
         marker: {
           size: d.map(v => 8 + 22 * (nv(v, s) - smin) / ((smax - smin) || 1)),
           color: d.map(v => nv(v, c)), colorscale: PALETTE, showscale: true,
-          colorbar: { title: FIELDS[c], thickness: 13 },
+          colorbar: { title: fieldLabel(c, lang), thickness: 13 },
           line: { color: '#fff', width: 1 }, opacity: 0.86,
         },
       }]
       layout = {
         ...layout,
-        xaxis: { ...(layout.xaxis as Record<string, unknown>), title: { text: FIELDS[x], font: { size: 11 } } },
-        yaxis: { ...(layout.yaxis as Record<string, unknown>), title: { text: FIELDS[y], font: { size: 11 } } },
+        xaxis: { ...(layout.xaxis as Record<string, unknown>), title: { text: fieldLabel(x, lang), font: { size: 11 } } },
+        yaxis: { ...(layout.yaxis as Record<string, unknown>), title: { text: fieldLabel(y, lang), font: { size: 11 } } },
       }
     }
     if (type === 'scatter3d') {
@@ -165,12 +183,12 @@ export default function ManualPlotter(_props: Props) {
         text: d.map(v => hover(v)), hovertemplate: '%{text}',
         marker: { size: 7, color: d.map(v => nv(v, c)), colorscale: PALETTE, showscale: true, opacity: 0.88 },
       }]
-      layout = { ...layout, scene: { xaxis: { title: FIELDS[x] }, yaxis: { title: FIELDS[y] }, zaxis: { title: FIELDS.retention }, bgcolor: '#f7f8fb' }, margin: { l: 10, r: 10, t: 55, b: 10 } }
+      layout = { ...layout, scene: { xaxis: { title: fieldLabel(x, lang) }, yaxis: { title: fieldLabel(y, lang) }, zaxis: { title: fieldLabel('retention', lang) }, bgcolor: '#f7f8fb' }, margin: { l: 10, r: 10, t: 55, b: 10 } }
     }
     if (type === 'parallel') {
-      const dimensions = ['capacity', 'desorptionTemp', 'retention', 'kinetics', 'pressure'].map(k => ({ label: FIELDS[k], values: d.map(v => nv(v, k)) }))
-      traces = [{ type: 'parcoords', line: { color: d.map(v => v.year), colorscale: PALETTE, showscale: true, colorbar: { title: '年份' } }, dimensions }]
-      layout = { ...layout, title: { text: '多性能指标平行坐标对比', font: { size: 15, color: '#263247' }, x: 0.03 }, margin: { l: 55, r: 55, t: 65, b: 35 } }
+      const dimensions = ['capacity', 'desorptionTemp', 'retention', 'kinetics', 'pressure'].map(k => ({ label: fieldLabel(k, lang), values: d.map(v => nv(v, k)) }))
+      traces = [{ type: 'parcoords', line: { color: d.map(v => v.year), colorscale: PALETTE, showscale: true, colorbar: { title: t('mp_year', lang) } }, dimensions }]
+      layout = { ...layout, title: { text: t('mp_parallel_title', lang), font: { size: 15, color: '#263247' }, x: 0.03 }, margin: { l: 55, r: 55, t: 65, b: 35 } }
     }
     if (type === 'heatmap') {
       const ks = ['capacity', 'desorptionTemp', 'retention', 'kinetics', 'pressure']
@@ -182,25 +200,25 @@ export default function ManualPlotter(_props: Props) {
         const db = Math.sqrt(d.reduce((n, v) => n + (nv(v, b) - bv) ** 2, 0))
         return +(num / (da * db || 1)).toFixed(2)
       }
-      traces = [{ type: 'heatmap', z: ks.map(a => ks.map(b => corr(a, b))), x: ks.map(k => FIELDS[k]), y: ks.map(k => FIELDS[k]), zmin: -1, zmax: 1, colorscale: [[0, '#4456a6'], [0.5, '#f6f8fb'], [1, '#e05750']], texttemplate: '%{z:.2f}', hovertemplate: '%{y} × %{x}: %{z:.2f}<extra></extra>' }]
-      layout = { ...layout, title: { text: '关键性能参数相关性热力图', font: { size: 15, color: '#263247' }, x: 0.03 }, margin: { l: 125, r: 30, t: 55, b: 105 } }
+      traces = [{ type: 'heatmap', z: ks.map(a => ks.map(b => corr(a, b))), x: ks.map(k => fieldLabel(k, lang)), y: ks.map(k => fieldLabel(k, lang)), zmin: -1, zmax: 1, colorscale: [[0, '#4456a6'], [0.5, '#f6f8fb'], [1, '#e05750']], texttemplate: '%{z:.2f}', hovertemplate: '%{y} × %{x}: %{z:.2f}<extra></extra>' }]
+      layout = { ...layout, title: { text: t('mp_heatmap_title', lang), font: { size: 15, color: '#263247' }, x: 0.03 }, margin: { l: 125, r: 30, t: 55, b: 105 } }
     }
     if (type === 'box') {
       traces = [...new Set(d.map(v => v.family))].map(f => ({
-        type: 'box', name: f, y: d.filter(v => v.family === f).map(v => nv(v, y)),
+        type: 'box', name: familyLabel(f, lang), y: d.filter(v => v.family === f).map(v => nv(v, y)),
         boxpoints: 'all', jitter: 0.35, pointpos: 0, marker: { size: 5 },
         hovertext: d.filter(v => v.family === f).map(v => v.formula),
       }))
-      layout = { ...layout, title: { text: `不同材料体系的${FIELDS[y]}分布`, font: { size: 15, color: '#263247' }, x: 0.03 }, xaxis: { gridcolor: '#dce2ea', title: '材料体系' }, yaxis: { gridcolor: '#dce2ea', title: FIELDS[y] } }
+      layout = { ...layout, title: { text: t('mp_box_title', lang).replace('{{y}}', fieldLabel(y, lang)), font: { size: 15, color: '#263247' }, x: 0.03 }, xaxis: { gridcolor: '#dce2ea', title: t('mp_family', lang) }, yaxis: { gridcolor: '#dce2ea', title: fieldLabel(y, lang) } }
     }
     if (type === 'radar') {
       const top = [...d].sort((a, b) => (b.capacity * 10 + b.retention - a.desorptionTemp / 5) - (a.capacity * 10 + a.retention - b.desorptionTemp / 5)).slice(0, 5)
       traces = top.map(v => ({
         type: 'scatterpolar', fill: 'toself', name: v.formula,
         r: [v.capacity / 14 * 100, (430 - v.desorptionTemp) / 350 * 100, v.retention, (100 - v.kinetics) / 100 * 100, (50 - Math.min(v.pressure, 50)) / 50 * 100],
-        theta: ['储氢密度', '低温放氢', '循环稳定性', '动力学', '低压性能'],
+        theta: RADAR_THETA_TKEYS.map(kk => t(kk, lang)),
       }))
-      layout = { ...layout, title: { text: '候选材料多维性能雷达图', font: { size: 15, color: '#263247' }, x: 0.03 }, polar: { radialaxis: { visible: true, range: [0, 100], gridcolor: '#cdd5e0' }, bgcolor: '#f7f8fb' }, margin: { l: 70, r: 70, t: 70, b: 50 } }
+      layout = { ...layout, title: { text: t('mp_radar_title', lang), font: { size: 15, color: '#263247' }, x: 0.03 }, polar: { radialaxis: { visible: true, range: [0, 100], gridcolor: '#cdd5e0' }, bgcolor: '#f7f8fb' }, margin: { l: 70, r: 70, t: 70, b: 50 } }
     }
     if (type === 'line') {
       const chosen = [...d].sort((a, b) => b.retention - a.retention).slice(0, 6)
@@ -208,18 +226,18 @@ export default function ManualPlotter(_props: Props) {
         const rows = CYCLE_DATA.filter(r => r.materialId === v.id)
         return { type: 'scatter', mode: 'lines+markers', name: v.formula, x: rows.map(r => r.cycle), y: rows.map(r => r.retention) }
       })
-      layout = { ...layout, title: { text: '高稳定性候选材料循环保持率', font: { size: 15, color: '#263247' }, x: 0.03 }, xaxis: { gridcolor: '#dce2ea', title: '循环次数' }, yaxis: { gridcolor: '#dce2ea', title: '容量保持率 (%)' } }
+      layout = { ...layout, title: { text: t('mp_line_title', lang), font: { size: 15, color: '#263247' }, x: 0.03 }, xaxis: { gridcolor: '#dce2ea', title: t('mp_cycle', lang) }, yaxis: { gridcolor: '#dce2ea', title: t('mp_retention_rate', lang) } }
     }
     if (type === 'bar') {
       const score = (v: Material) => v.capacity / 14 * 40 + (430 - v.desorptionTemp) / 350 * 30 + v.retention / 100 * 30
       const top = [...d].sort((a, b) => score(b) - score(a)).slice(0, 12)
       traces = [{
         type: 'bar', orientation: 'h', y: top.map(v => v.formula).reverse(), x: top.map(score).reverse(),
-        marker: { color: top.map(v => v.desorptionTemp).reverse(), colorscale: PALETTE, showscale: true, colorbar: { title: '放氢温度 ℃' } },
+        marker: { color: top.map(v => v.desorptionTemp).reverse(), colorscale: PALETTE, showscale: true, colorbar: { title: t('mp_des_temp', lang) } },
         customdata: top.map(v => [v.capacity, v.retention]).reverse(),
-        hovertemplate: '%{y}<br>综合分 %{x:.1f}<br>储氢密度 %{customdata[0]} wt%<br>保持率 %{customdata[1]}%<extra></extra>',
+        hovertemplate: t('mp_bar_hover', lang),
       }]
-      layout = { ...layout, title: { text: '候选材料综合性能排名', font: { size: 15, color: '#263247' }, x: 0.03 }, xaxis: { gridcolor: '#dce2ea', title: '综合评分' }, margin: { l: 95, r: 32, t: 55, b: 58 } }
+      layout = { ...layout, title: { text: t('mp_bar_title', lang), font: { size: 15, color: '#263247' }, x: 0.03 }, xaxis: { gridcolor: '#dce2ea', title: t('mp_score', lang) }, margin: { l: 95, r: 32, t: 55, b: 58 } }
     }
 
     Plotly.react(el, traces, layout, {
@@ -228,7 +246,7 @@ export default function ManualPlotter(_props: Props) {
       toImageButtonOptions: { format: 'png', filename: 'solid_hydrogen_materials_chart', scale: 2 },
     })
     return () => { Plotly.purge(el) }
-  }, [filtered, chartType, xField, yField, colorField, sizeField])
+  }, [filtered, chartType, xField, yField, colorField, sizeField, lang])
 
   function reset() {
     setChartType('bubble')
@@ -245,30 +263,30 @@ export default function ManualPlotter(_props: Props) {
     const el = chartRef.current
     if (!el) return
     ;(Plotly as unknown as { downloadImage: (el: HTMLElement, opts: { format: string; height: number; width: number; scale: number; filename: string }) => void }).downloadImage(el, {
-      format: 'png', height: 900, width: 1500, scale: 1, filename: '固态储氢材料图表',
+      format: 'png', height: 900, width: 1500, scale: 1, filename: t('manual_filename', lang),
     })
   }
 
   const selOptions = () => (
     <div className="chart-builder">
-      <label>图表类型<select value={chartType} onChange={e => setChartType(e.target.value)}>
-        {CHART_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
+      <label>{t('manual_chart_type', lang)}<select value={chartType} onChange={e => setChartType(e.target.value)}>
+        {CHART_TYPES.map(ct => <option key={ct.value} value={ct.value}>{t(ct.tkey, lang)}</option>)}
       </select></label>
-      <label>横轴<select value={xField} onChange={e => setXField(e.target.value)}>
-        {FIELD_KEYS.map(k => <option key={k} value={k}>{FIELDS[k]}</option>)}
+      <label>{t('manual_x_axis', lang)}<select value={xField} onChange={e => setXField(e.target.value)}>
+        {FIELD_KEYS.map(k => <option key={k} value={k}>{fieldLabel(k, lang)}</option>)}
       </select></label>
-      <label>纵轴<select value={yField} onChange={e => setYField(e.target.value)}>
-        {FIELD_KEYS.map(k => <option key={k} value={k}>{FIELDS[k]}</option>)}
+      <label>{t('manual_y_axis', lang)}<select value={yField} onChange={e => setYField(e.target.value)}>
+        {FIELD_KEYS.map(k => <option key={k} value={k}>{fieldLabel(k, lang)}</option>)}
       </select></label>
-      <label>颜色<select value={colorField} onChange={e => setColorField(e.target.value)}>
-        {FIELD_KEYS.map(k => <option key={k} value={k}>{FIELDS[k]}</option>)}
+      <label>{t('color_field', lang)}<select value={colorField} onChange={e => setColorField(e.target.value)}>
+        {FIELD_KEYS.map(k => <option key={k} value={k}>{fieldLabel(k, lang)}</option>)}
       </select></label>
-      <label>气泡大小<select value={sizeField} onChange={e => setSizeField(e.target.value)}>
-        {FIELD_KEYS.map(k => <option key={k} value={k}>{FIELDS[k]}</option>)}
+      <label>{t('manual_size', lang)}<select value={sizeField} onChange={e => setSizeField(e.target.value)}>
+        {FIELD_KEYS.map(k => <option key={k} value={k}>{fieldLabel(k, lang)}</option>)}
       </select></label>
-      <label>材料体系<select value={family} onChange={e => setFamily(e.target.value)}>
-        <option value="全部">全部材料</option>
-        {FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}
+      <label>{t('manual_family_label', lang)}<select value={family} onChange={e => setFamily(e.target.value)}>
+        <option value="全部">{t('manual_all_families', lang)}</option>
+        {FAMILIES.map(f => <option key={f} value={f}>{familyLabel(f, lang)}</option>)}
       </select></label>
     </div>
   )
@@ -276,34 +294,34 @@ export default function ManualPlotter(_props: Props) {
   return (
     <div className="manual-plot-demo">
       <div className="result-heading demo-heading">
-        <span className="demo-title">手动绘图器</span>
+        <span className="demo-title">{t('manual_title', lang)}</span>
         <div className="result-actions">
-          <button onClick={reset}>重置</button>
-          <button onClick={exportPng}>导出 PNG</button>
+          <button onClick={reset}>{t('reset', lang)}</button>
+          <button onClick={exportPng}>{t('export_png', lang)}</button>
         </div>
       </div>
 
       {selOptions()}
 
       <div className="range-row">
-        <span>放氢温度范围</span>
+        <span>{t('manual_temp_range', lang)}</span>
         <input type="range" min={80} max={430} value={tempMin}
           onChange={e => { setTempMin(Number(e.target.value)); if (Number(e.target.value) > tempMax) setTempMax(Number(e.target.value)) }} />
-        <output>{tempMin}℃</output>
+        <output>{tempMin}{t('manual_deg_c', lang)}</output>
         <input type="range" min={80} max={430} value={tempMax}
           onChange={e => { setTempMax(Number(e.target.value)); if (Number(e.target.value) < tempMin) setTempMin(Number(e.target.value)) }} />
-        <output>{tempMax}℃</output>
+        <output>{tempMax}{t('manual_deg_c', lang)}</output>
       </div>
 
       <div className="quality-strip">
-        <span><i className="ok" />字段校验</span>
-        <span><i className="ok" />单位统一</span>
-        <span><i className="ok" />安全查询</span>
-        <span><i className="ok" />结果试跑</span>
-        <b>{filtered.length} 条材料记录</b>
+        <span><i className="ok" />{t('manual_check_fields', lang)}</span>
+        <span><i className="ok" />{t('manual_check_units', lang)}</span>
+        <span><i className="ok" />{t('manual_check_safety', lang)}</span>
+        <span><i className="ok" />{t('manual_check_run', lang)}</span>
+        <b>{filtered.length} {t('manual_records', lang)}</b>
       </div>
 
-      <div ref={chartRef} className="demo-chart" role="img" aria-label="固态储氢材料交互式图表" />
+      <div ref={chartRef} className="demo-chart" role="img" aria-label={t('manual_aria', lang)} />
     </div>
   )
 }
