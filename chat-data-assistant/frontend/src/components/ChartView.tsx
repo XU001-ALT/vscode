@@ -500,14 +500,14 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
   const filterIsNumeric = !!(filterCol && numericCols.includes(filterCol))
 
   return (
-    <div>
+    <div className="chart-view">
       {/* 工具栏：重置 / 导出 PNG */}
       <div className="result-actions">
         <button className="btn-outline" onClick={resetControls}>{t('reset', lang)}</button>
         <button className="btn-outline" onClick={downloadPng}>{t('export_png', lang)}</button>
       </div>
 
-      <div>
+      <div className="chart-view-body">
       {recValid && (
         <>
           <label className="chart-controls">
@@ -731,7 +731,7 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
         </div>
       )}
 
-      <div ref={chartRef} style={{ width: '100%', height: 'clamp(320px, 56vh, 600px)' }} />
+      <div ref={chartRef} style={{ width: '100%', flex: 1, minHeight: 0 }} />
       </div>
     </div>
   )
