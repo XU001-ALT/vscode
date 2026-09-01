@@ -512,7 +512,11 @@ body {
   border-radius: 10px;
   padding: 10px 12px 12px;
   background: var(--panel-solid);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.manual-plot-demo::-webkit-scrollbar { display: none; width: 0; }
 .demo-heading {
   display: flex;
   align-items: center;
@@ -598,7 +602,7 @@ body {
 
 .demo-chart {
   flex: 1;
-  min-height: 320px;
+  min-height: 120px;
   width: 100%;
   background: #f2f4f9;
   border: 1px solid rgba(148, 163, 184, 0.25);
