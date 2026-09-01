@@ -499,6 +499,10 @@ body {
   padding: 12px 16px;
   background: rgba(251, 191, 36, 0.05);
 }
+/* 手动绘图打开时：结果区全部让给绘图器，AI 结果体压缩为内容高度（不参与抢空间，避免绘图区被挤塌） */
+.result-area.manual-open .result-body {
+  flex: 0 0 auto;
+}
 .manual-plot-demo {
   flex: 1;
   min-height: 0;
@@ -594,7 +598,7 @@ body {
 
 .demo-chart {
   flex: 1;
-  min-height: 0;
+  min-height: 320px;
   width: 100%;
   background: #f2f4f9;
   border: 1px solid rgba(148, 163, 184, 0.25);

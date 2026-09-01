@@ -70,7 +70,7 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
         </button>
       </div>
 
-      <div className="result-area">
+      <div className={`result-area${showManual && schemaLoaded ? ' manual-open' : ''}`}>
         <div className="panel-title result-title">
           <span>{t('result_area', lang)}</span>
           <button
@@ -82,13 +82,15 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
           </button>
         </div>
 
-        {/* 手动绘图：独立展开，绘制图表但不展示明细数据/SQL */}
+        {/* 手动绘图：占满整个结果展示区，绘制图表但不展示明细数据/SQL */}
         {showManual && schemaLoaded && (
           <div className="manual-sql-box">
             <ManualPlotter lang={lang} />
           </div>
         )}
 
+        {/* 手动绘图打开时隐藏 AI 结果区（正在查询时保留 loading 提示），让绘图器占满整个结果区 */}
+        {(showManual && schemaLoaded && !loading) ? null : (
         <div className="result-body">
           {loading && (
             <div className="loading-block">
@@ -136,6 +138,7 @@ export default function QueryPanel({ lang, sessionId, schemaLoaded }: Props) {
             />
           )}
         </div>
+        )}
       </div>
     </div>
   )

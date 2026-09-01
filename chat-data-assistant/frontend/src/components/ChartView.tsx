@@ -731,7 +731,7 @@ export default function ChartView({ columns, rows, recommendation, lang }: Props
         </div>
       )}
 
-      <div ref={chartRef} style={{ width: '100%', flex: 1, minHeight: 0 }} />
+      <div ref={chartRef} style={{ width: '100%', flex: 1, minHeight: 320 }} />
       </div>
     </div>
   )
