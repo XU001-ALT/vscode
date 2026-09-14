@@ -1,0 +1,4 @@
+# Preserve verified upstream source bytes across Windows checkouts.
+*.py -text
+requirements.txt -text
+prompts/*.md -text -whitespace

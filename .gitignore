@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Keep the initial DB parquet for the app, but ignore user/runtime artifacts.
+outputs/*
+!outputs/FT_SAF_catalyst_extraction_wide_table.parquet
+pdfs/
+data/
+*.sqlite*
+*.db
+.env
+.streamlit/secrets.toml
+*.key
+*.pem
+secrets.json
+# Local/runtime
+*.pyc
+.streamlit/
+outputs/debug/
+pdfs/uploads/
+*.log
+_pydeps/
+_saf_work/
+_merge_saf.py
+~$*.xlsx

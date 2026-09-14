@@ -1,0 +1,98 @@
+{
+  "repository": "https://github.com/z72882743-arch/saf-data-platform",
+  "revision": "43336612e47b499653bfa74bb2edc11dcdd9d432",
+  "files": {
+    "app27.py": {
+      "github_blob_sha": "6606ca3aae3b80fc46636087b6748ac3f42b4be0",
+      "sha256": "f1a18720558a9b00ded902694b231f3e83eb241cd6b5705b99d9ddd14b2b0e39",
+      "bytes": 149228
+    },
+    "requirements.txt": {
+      "github_blob_sha": "bd69d17778f128c4a491299ba9604d35a37c7727",
+      "sha256": "2b6059fb0fba3d646efb7879f009c0f8f1dfd62baa976a453d225adafd2b3fd6",
+      "bytes": 190
+    },
+    "saf_common.py": {
+      "github_blob_sha": "5332bb4ceb0eef36cb77089114699c60674937cb",
+      "sha256": "92b2389691d327f05030eac520b56026a44075a4a030ad5008d21c1a83a4a976",
+      "bytes": 4820
+    },
+    "ingest_extraction.py": {
+      "github_blob_sha": "f4039e26065f4d338e67efd7bda4c4bf60986d1f",
+      "sha256": "7a082ece5bd51922d8ea3176bac78300e76be99222ae15f6cb29572c405344b5",
+      "bytes": 38539
+    },
+    "rebuild_parquet.py": {
+      "github_blob_sha": "2427f0b50f46abe761a9b0ce7525c8c4e7cad702",
+      "sha256": "5c8ce66f144236a7d01ce3e6eff7f0fdda03b93e9c681180ec93a43943f24538",
+      "bytes": 30699
+    },
+    "build_manifest.py": {
+      "github_blob_sha": "e2f2f432085ee2c63983a40eff0832b1ff1f3286",
+      "sha256": "1afaf751d6564e8b6c13adf6b841e6c75c7f19c134ed505888c7477b0aef90c1",
+      "bytes": 13783
+    },
+    "downloader.py": {
+      "github_blob_sha": "e829f954befc61e7665c44c839f898769c60cfb8",
+      "sha256": "b36420773940c0706743ec0a2585710338047b21b239a87ef29369bfa889a77d",
+      "bytes": 10942
+    },
+    "export_evidence_to_long.py": {
+      "github_blob_sha": "8b3084dd4afa2f759702e12c8ad3cfbd71c8b929",
+      "sha256": "7241174ffea977b32698b96ac0b37b55cd35e56587a9453470118a40d858023f",
+      "bytes": 11769
+    },
+    "prepare_prompt_packets.py": {
+      "github_blob_sha": "9c55d8ccd66352215ae76beaa502bda4b3cd6a62",
+      "sha256": "3e64f78e7d4eae1b7d2a444391e8229761f8966389c3a1f3e645e2a2d0d1f22e",
+      "bytes": 9069
+    },
+    "qc_validate_extractions.py": {
+      "github_blob_sha": "1227d2bcece51ce01a1be304c3fa0cd9b7b653ca",
+      "sha256": "09486dc0a6f2ef435ade79f3e458b18d123d16349bd8ed45e8a302ab861072af",
+      "bytes": 5277
+    },
+    "run_llm_extraction.py": {
+      "github_blob_sha": "42bdf8777087a0ea58aa8bf472f01b1083a2289a",
+      "sha256": "f9cdcc0a8b9d1413dd7d1677ec1cfee50cbbc57dbc6b6f41a76a50687c5b7c35",
+      "bytes": 8753
+    },
+    "webvpn_downloader3.py": {
+      "github_blob_sha": "643312702b8886589739a63dbd2e9fbada47fe96",
+      "sha256": "5ca22696ec175ed676f09273f5605ff87cd037659c475ad4aba41411c39356d8",
+      "bytes": 15557
+    },
+    "prompts/01_metadata.md": {
+      "github_blob_sha": "0097b3f1f636b3c4f05bbec96bb44dcece3ab02b",
+      "sha256": "1daf7e609451ffa7cbbc08e7a7bc2c8edbdf3dbc98877c47342fdc8a7dbc0d22",
+      "bytes": 1411
+    },
+    "prompts/02_catalyst.md": {
+      "github_blob_sha": "c0cf15cc30d2eeb2b6114af0aa8e8bc7bdb8d865",
+      "sha256": "909cb69010c16afe954d5a9b640ffd66834527faaf099291d23c384b6271b9f0",
+      "bytes": 2017
+    },
+    "prompts/03_reaction_conditions.md": {
+      "github_blob_sha": "93cc7f6338d3787db0dcbb56f77e12981ac182eb",
+      "sha256": "b82f271517601e72a1b1bd8cbf9957acbe6b406a8a281f69388dd61f6e2e8974",
+      "bytes": 1844
+    },
+    "prompts/04_performance.md": {
+      "github_blob_sha": "bca8f788cf68b978f9ec883ed9c9321e16e2c7cf",
+      "sha256": "4cb00870c008c5698f57b944dac2f55ab57742409a6963fc8dc7648778b58b41",
+      "bytes": 1760
+    },
+    "prompts/05_provenance_confidence.md": {
+      "github_blob_sha": "76cca15810efa0dddd16df211bef53501343a2bf",
+      "sha256": "14f830e42a4855384a144ce0b7532ae37f58626dcf0e48d69ccafbeddbaccb92",
+      "bytes": 1303
+    },
+    "outputs/FT_SAF_catalyst_extraction_wide_table.parquet": {
+      "github_blob_sha": "a0d5224836310abd357ca2cea89052afdc6c9215",
+      "sha256": "c8354fba81456afeff891a49812fd325df0959e38a61357e47c9ef75432bcc43",
+      "bytes": 2315966
+    }
+  },
+  "active_database": "outputs/FT_SAF_catalyst_extraction_wide_table.parquet",
+  "local_adaptations": []
+}
