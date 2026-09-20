@@ -1,4 +1,6 @@
 # ── 通用后端依赖（Streamlit 旧版 + FastAPI 新版共用）──
+# numpy 被 api/serializers.py 直接 import，必须显式声明（不能只靠 pandas 传递依赖）
+numpy==2.5.1
 pandas==3.0.5
 sqlalchemy==2.0.51
 psycopg2-binary==2.9.12
