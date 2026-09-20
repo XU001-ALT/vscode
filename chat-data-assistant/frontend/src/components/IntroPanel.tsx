@@ -2,6 +2,7 @@ import type { Lang } from '../types'
 import { t } from '../i18n'
 
 export default function IntroPanel({ lang }: { lang: Lang }) {
+  const isEn = lang === 'en'
   return (
     <div className="intro">
       <div className="panel-title">{t('intro_area', lang)}</div>
@@ -12,8 +13,8 @@ export default function IntroPanel({ lang }: { lang: Lang }) {
         <p>{t('intro_p4', lang)}</p>
         <p>{t('intro_p5', lang)}</p>
         <video
-          src="/demo.mp4"
-          poster="/demo-poster.jpg"
+          src={isEn ? '/demo-en.mp4' : '/demo.mp4'}
+          poster={isEn ? '/demo-poster-en.jpg' : '/demo-poster.jpg'}
           className="intro-img"
           loop
           playsInline
