@@ -31,3 +31,9 @@ chat-data-assistant/data/
 
 # Legacy Streamlit UI (replaced by frontend/)
 chat-data-assistant/ui/
+
+# 演示视频生成工具的运行产物（不进 git；内容定义与代码进 git）
+chat-data-assistant/video/runs/
+# 发布到前端演示位时自动产生的备份
+chat-data-assistant/frontend/public/*.bak.mp4
+

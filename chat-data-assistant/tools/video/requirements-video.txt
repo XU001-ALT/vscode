@@ -1,0 +1,13 @@
+# 视频生成工具的**工具期**依赖（与运行期依赖分离）
+#
+# 安装：
+#   cd chat-data-assistant
+#   venv\Scripts\python.exe -m pip install -r tools\video\requirements-video.txt
+#
+# 说明：
+#   * 不合并进 requirements.txt：后端/前端运行期不需要它们，Docker 镜像也不会安装；
+#   * Playwright 使用**系统已安装的 Edge/Chrome**（channel="msedge"/"chrome"），
+#     因此无需执行 `playwright install`（省去约 150MB 浏览器下载）；
+#   * edge-tts 提供 WordBoundary 逐词时间戳，字幕由旁白文本直接生成，无需语音识别。
+playwright==1.63.0
+edge-tts==7.2.8
