@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chat-data-assistant.local/schemas/scene-report.schema.json",
+  "title": "SceneReport",
+  "description": "probe 阶段写出的候选实测报告（runs/<run_id>/report.json）。字段语义见 specs/001-intro-video-generator/data-model.md §3~§6。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "generated_at", "tool_versions", "preflight", "candidates", "summary", "seeded_from"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{7}$",
+      "description": "<YYYYMMDD-HHMMSS>-<内容定义 sha256 前 7 位>"
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "tool_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python", "ffmpeg", "playwright", "edge_tts"],
+      "properties": {
+        "python": { "type": "string" },
+        "ffmpeg": { "type": "string" },
+        "playwright": { "type": "string" },
+        "edge_tts": { "type": "string" }
+      }
+    },
+    "preflight": {
+      "type": "array",
+      "minItems": 9,
+      "items": { "$ref": "#/$defs/preflightCheck" }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "chart_ok", "table_only", "failed", "recommended", "manual_recommended"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "chart_ok": { "type": "integer", "minimum": 0 },
+        "table_only": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "recommended": { "type": "integer", "minimum": 0 },
+        "manual_recommended": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "seeded_from": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "localizedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["zh", "en"],
+      "properties": {
+        "zh": { "type": "string", "minLength": 1 },
+        "en": { "type": "string", "minLength": 1 }
+      }
+    },
+    "preflightCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ok", "detail", "blocking"],
+      "properties": {
+        "id": { "enum": ["backend", "frontend", "schema", "credential", "browser", "ffmpeg", "font", "tts", "disk"] },
+        "ok": { "type": "boolean" },
+        "detail": { "type": "string", "description": "已脱敏的实测细节" },
+        "blocking": { "type": "boolean" }
+      }
+    },
+    "aesthetics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["no_label_overlap", "no_text_truncation", "axes_legend_complete", "theme_consistent", "max_overlap_ratio", "issues"],
+      "properties": {
+        "no_label_overlap": { "type": "boolean" },
+        "no_text_truncation": { "type": "boolean" },
+        "axes_legend_complete": { "type": "boolean" },
+        "theme_consistent": { "type": "boolean" },
+        "max_overlap_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "prompt", "verdict", "intent", "chart_type", "data_points", "data_points_method", "aesthetics", "api_ok", "error_code", "error_excerpt", "plate_path", "recommended", "rank", "capture_ms"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,31}$" },
+        "source": { "enum": ["query", "manual"] },
+        "prompt": { "$ref": "#/$defs/localizedText" },
+        "verdict": { "enum": ["chart_ok", "table_only", "failed"] },
+        "intent": { "enum": ["chart", "data", "chat", null] },
+        "chart_type": { "type": ["string", "null"] },
+        "data_points": { "type": "integer", "minimum": 0 },
+        "data_points_method": { "enum": ["row_count", "cells", "manual"] },
+        "aesthetics": { "$ref": "#/$defs/aesthetics" },
+        "api_ok": { "type": "boolean" },
+        "error_code": { "type": ["string", "null"] },
+        "error_excerpt": { "type": ["string", "null"], "maxLength": 200 },
+        "plate_path": { "type": ["string", "null"], "pattern": "^(plates/[A-Za-z0-9_.-]+\\.(png|jpg))?$" },
+        "recommended": { "type": "boolean" },
+        "rank": { "type": "integer", "minimum": 0 },
+        "capture_ms": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

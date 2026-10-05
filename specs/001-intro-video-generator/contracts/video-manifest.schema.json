@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chat-data-assistant.local/schemas/video-manifest.schema.json",
+  "title": "RunManifest",
+  "description": "每次运行的产物清单（runs/<run_id>/manifest.json），由 build 写出、verify 更新。字段语义见 specs/001-intro-video-generator/data-model.md §8~§10。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "created_at", "tool_versions", "content_sha256", "content_version", "source_report_sha256", "preflight", "shots", "produced_videos", "verification", "verification_passed", "sensitive_findings", "published", "summary_runtime_sec"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{7}$"
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "tool_versions": { "$ref": "#/$defs/toolVersions" },
+    "content_sha256": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenes", "candidates"],
+      "properties": {
+        "scenes": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "candidates": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "content_version": {
+      "type": "string",
+      "description": "形如 scenes=1.0.0,candidates=1.0.0",
+      "pattern": "^scenes=[0-9]+\\.[0-9]+\\.[0-9]+,candidates=[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "source_report_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "preflight": {
+      "type": "array",
+      "minItems": 9,
+      "items": { "$ref": "#/$defs/preflightCheck" }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/shotEntry" }
+    },
+    "produced_videos": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "description": "中文、英文各 1 条；--lang 单语时为 1 条",
+      "items": { "$ref": "#/$defs/producedVideo" }
+    },
+    "verification": { "$ref": "#/$defs/verification" },
+    "verification_passed": { "type": "boolean" },
+    "sensitive_findings": { "type": "integer", "minimum": 0 },
+    "published": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["applied", "targets", "backups", "at"],
+          "properties": {
+            "applied": { "type": "boolean" },
+            "targets": { "type": "array", "items": { "type": "string" } },
+            "backups": { "type": "array", "items": { "type": "string" } },
+            "at": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    },
+    "summary_runtime_sec": {
+      "type": "number",
+      "minimum": 0,
+      "description": "probe+build+verify 的总耗时（SC-001 的 30 分钟护栏依据）"
+    }
+  },
+  "$defs": {
+    "toolVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python", "ffmpeg", "playwright", "edge_tts"],
+      "properties": {
+        "python": { "type": "string" },
+        "ffmpeg": { "type": "string" },
+        "playwright": { "type": "string" },
+        "edge_tts": { "type": "string" }
+      }
+    },
+    "preflightCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ok", "detail", "blocking"],
+      "properties": {
+        "id": { "enum": ["backend", "frontend", "schema", "credential", "browser", "ffmpeg", "font", "tts", "disk"] },
+        "ok": { "type": "boolean" },
+        "detail": { "type": "string" },
+        "blocking": { "type": "boolean" }
+      }
+    },
+    "shotEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "order", "start_sec", "duration_sec", "candidate_id", "plate_sha256", "narration_chars"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,31}$" },
+        "order": { "type": "integer", "minimum": 1 },
+        "start_sec": { "type": "number", "minimum": 0 },
+        "duration_sec": { "type": "number", "exclusiveMinimum": 0 },
+        "candidate_id": { "type": ["string", "null"] },
+        "plate_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "narration_chars": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "producedVideo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "path", "sha256", "bytes", "duration_sec", "width", "height", "fps", "video_codec", "audio_codec", "pix_fmt", "container", "scene_count", "chart_background_ratio", "subtitle_coverage", "sensitive_findings", "created_at", "run_id", "source_shots"],
+      "properties": {
+        "language": { "enum": ["zh", "en"] },
+        "path": { "type": "string", "pattern": "^demo-(zh|en)\\.mp4$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "duration_sec": { "type": "number", "exclusiveMinimum": 0 },
+        "width": { "type": "integer", "minimum": 320 },
+        "height": { "type": "integer", "minimum": 240 },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "video_codec": { "const": "h264" },
+        "audio_codec": { "const": "aac" },
+        "pix_fmt": { "const": "yuv420p" },
+        "container": { "const": "mp4" },
+        "scene_count": { "type": "integer", "minimum": 1 },
+        "chart_background_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "subtitle_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sensitive_findings": { "type": "integer", "minimum": 0 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "run_id": { "type": "string", "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{7}$" },
+        "source_shots": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/shotEntry" } }
+      }
+    },
+    "verification": {
+      "type": "array",
+      "minItems": 5,
+      "description": "本 schema 版本发出 10 项：V8~V12 与 SC-002/007/008/009/012",
+      "items": { "$ref": "#/$defs/verificationCheck" }
+    },
+    "verificationCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ok", "detail", "measured", "blocking"],
+      "properties": {
+        "id": { "enum": ["V8", "V9", "V10", "V11", "V12", "SC-002", "SC-007", "SC-008", "SC-009", "SC-012"] },
+        "ok": { "type": "boolean" },
+        "detail": { "type": "string" },
+        "measured": { "type": ["number", "null"] },
+        "blocking": { "type": "boolean" }
+      }
+    }
+  }
+}
