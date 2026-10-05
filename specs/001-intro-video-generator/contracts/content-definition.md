@@ -153,6 +153,17 @@ expect_chart = true
   zh = "对比各装置的压力分布情况"
   en = "Compare the pressure distribution across all units"
 
+# 关闭 AI 推荐 + 手动选型：先取消勾选「使用 AI 推荐的图表配置」，再指定图型与字段
+[[candidate]]
+id = "trend_monthly_manual"
+expect_chart = true
+ai_recommend = false
+chart_type = "bar"
+fields = ["month", "avg_purity"]
+  [candidate.prompt]
+  zh = "绘制按月统计的氢气纯度柱状图"
+  en = "Plot a bar chart of monthly average hydrogen purity"
+
 [[candidate]]
 id = "dist_by_shift"
 expect_chart = true
@@ -191,6 +202,9 @@ color_field = "purity"
 | `candidate[].prompt` | 是 | 双语非空；**不得**仅为「多少/总计/统计/有几个」等聚合问法 | `prompt_not_visual_warn`（告警，仍会实测） |
 | `candidate[].expect_chart` | 否 | 默认 `true`；`false` 用于对照项 | — |
 | `candidate[].notes` | 否 | 任意文本，写入报告 | — |
+| `candidate[].ai_recommend` | 否 | 默认 `true`；`false` 表示采集时取消勾选界面里的「使用 AI 推荐的图表配置」，改用手动选型 | — |
+| `candidate[].chart_type` | 否 | 手动指定的图型（`ChartView.CHART_ORDER` 的 12 种之一）；必须与 `ai_recommend = false` 同时给出 | `content_invalid` |
+| `candidate[].fields` | 否 | 字符串数组；在该图型的下拉框行里按顺序匹配字段（忽略大小写全等 → 忽略大小写包含，如 `count` 命中 `paper_count`）；必须与 `ai_recommend = false` 同时给出。双轴型图型若横纵轴落到同一列，采集会自动把纵轴换成下一个可用列 | `content_invalid` |
 | `manual` 数量 | 是 | ≥ 1 | `insufficient_manual_sources` |
 | `manual[].chart_type` | 是 | 取自 `ChartView.CHART_ORDER` 的 12 种之一 | `content_invalid` |
 | `manual[].x_field`/`y_fields`/`z_field`/`size_field`/`color_field` | 条件 | 按图型必填（见 data-model.md §2.3）；字段名必须在后端 schema 的列名集合中 | `field_not_found` |

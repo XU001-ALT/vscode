@@ -145,6 +145,7 @@ Get-FileHash chat-data-assistant\video\runs\<旧run_id>\demo-zh.mp4 -Algorithm S
 | 字幕中文显示为方块 | 字体缺失 | 确认 `C:\Windows\Fonts\msyh.ttc` 存在；或在 `settings.py` 改 `subtitle_font` |
 | `verify` 报 `duration_out_of_range` | 分镜过多/旁白过长 | 在 `scenes.toml` 调整 `duration_sec` 或删减分镜 |
 | `build` 报路径已存在 | 同一 `run_id` 重复构建 | 属预期保护（FR-022）；换一次运行或改用新的 `run_id`（内容定义有变更时 `short-sha` 会自动变化） |
+| 裸 `build` 报 `E5`（推荐场景不足） | 不带 `--run-id` 时取「最新 run」，而最新那次可能是**预检失败**留下的空报告 | 显式指定成功那次：`build --run-id <run_id>`（`probe` 首行输出即为 run_id） |
 | FFmpeg 未找到 | PATH 未包含 | 把 `D:\ffmpeg\ffmpeg-9.0.1-full_build\bin` 加入 PATH，或在 `settings.py` 设 `ffmpeg_bin` |
 | 渲染很慢 | `zoompan` 为 CPU 密集 | 单镜时长控制在 18 秒内；或临时把 `preset` 调为 `faster` 做预览（成片仍用 `medium`） |
 

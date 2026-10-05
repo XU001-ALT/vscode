@@ -27,7 +27,7 @@
 
 **决策**：用 Playwright 驱动**系统已安装**的 Edge/Chrome（`channel="msedge"`/`"chrome"`），对每个候选提问执行「聚焦输入框 → 逐字输入 → `Enter` 提交 → 等待图表渲染完成」，随后取两类画面素材：
 
-1. **静帧底图（plate）**：对图表容器做元素级截图，上下文设 `deviceScaleFactor=2`，得到 2 倍像素密度底图（1920×1080 取景下图表元素约 1500×900 CSS px → 约 3000×1800 px），使 `zoompan` 慢推镜头时仍保持锐利。
+1. **静帧底图（plate）**：以图表容器为锚，取一块 **16:9** 的取景框（高度取满容器、横向加宽到 `height × 16/9` 并夹在视口内，必要时回退为元素级截图）。上下文中含周边界面，成片里既不出现大片补边也不丢内容。上下文设 `deviceScaleFactor=2`，得到 2 倍像素密度底图（如 1148×646 CSS → 2296×1292 px），使 `zoompan` 慢推镜头时仍保持锐利。
 2. **交互片段（clip）**：对「提交 → 出图」区间录制 viewport 视频（`record_video_dir`），作为成片里真实交互段落的素材。
 
 **理由**：一次驱动同时产出「高清静帧 + 真实交互片段 + 可判定 DOM 快照」，全程脚本化、可重复，满足 FR-001（零人工）与 FR-003（真实界面）。
@@ -72,8 +72,8 @@
 
 | 检查项 | 量测方式 | 通过条件（阈值见 `settings.py`） |
 |--------|----------|----------------------------------|
-| 无标签重叠 | 取坐标轴刻度文本（`.xtick`/`.ytick` 文本节点）与图例项的 `getBoundingClientRect()`，两两求交叠面积 | 交叠面积 / 较小面积 < 5%，且交叠对数 = 0 |
-| 无文字截断 | 对所有可见文本节点比对 `scrollWidth <= clientWidth + 1` 与 `scrollHeight <= clientHeight + 1` | 无任一节点溢出 |
+| 无标签重叠 | 取坐标轴刻度文本（`.xtick`/`.ytick` 文本节点）与图例项的**有向**矩形（中心 + 文字自身宽高 + 旋转角；斜排刻度用 `getBBox` 还原去旋转后的宽高），两两求真实交集面积（凸多边形裁剪） | 交叠面积 / 较小面积 < 5%，且交叠对数 = 0 |
+| 无文字截断 | HTML 文本节点：`scrollWidth <= clientWidth + 1` 且 `scrollHeight <= clientHeight + 1`；**SVG `<text>`**（Plotly 的刻度、轴标题、图例全部是 SVG 文本，`clientWidth/clientHeight` 在浏览器里返回无意义值）改为比对文字矩形是否越出被测容器边界 | 无任一节点溢出 |
 | 坐标轴与图例完整 | 断言存在非空 x/y 轴标题或刻度，且（多系列时）`legend` 容器存在且项数 ≥ 2 | 全部成立 |
 | 配色与主题一致 | 读取 `.app` 的 `data-lang` 判定主题（`zh` 深色 / `en` 浅色），比对 Plotly 容器 `paper_bgcolor` 的解析结果与主题期望值（深色取透明/暗底，浅色取透明/白底），并断言色序来自 `ChartView.PALETTE` | 主题匹配且色板命中 |
 
@@ -91,9 +91,10 @@
 
 **决策**：全部用系统 FFmpeg 9.0.1，分三步（`render.py` 只构建命令，执行交给 `ffmpeg.py`）：
 
-1. **分镜渲染**：静帧底图 → `zoompan` 慢推/慢移（`d=<帧数>`、`fps=30`、`s=1920x1080`，缩放系数 `z` 在 1.0→1.12 之间按分镜随机但确定（由 run seed 决定））→ 叠加 `subtitles=xxx.ass`（`fontsdir=C:/Windows/Fonts`）→ 输出中间片段（统一编码参数）。
-2. **拼接**：用 `xfade`（`transition=fade`，0.5s 重叠）按顺序串接所有片段；时长不足的分镜先用克隆帧延长，保证 `offset` 正确。
-3. **封装**：视频 `libx264 -preset medium -crf 20 -pix_fmt yuv420p -r 30`；音频 `aac -b:a 160k -ar 44100 -ac 2`；`-movflags +faststart`。
+1. **取景归一（关键）**：底图是界面元素级截图，比例随内容变化（如 `.chart-view` ≈ 590×646 CSS ≈ 0.91），而 `zoompan` 只按 `s=1920x1080` 输出、**不会保持输入比例**——直接把底图送进去会被横向拉宽（图形与文字变形，观感像「没截全」）。因此先等比缩放 + 居中补边到 16:9 画布（补边色 = 界面深色底 `--bg` `#0b1020`），并按推镜幅度预留安全边距（`PLATE_SAFE_MARGIN` ≈ 6%，即 `(1-1/ZOOM_END)/2` 向上取整），保证推镜到最大时也裁不到图形与轴标签。
+2. **分镜渲染**：归一后的画布 → `zoompan` 慢推/慢移（`d=<帧数>`、`fps=30`、`s=1920x1080`，缩放系数 `z` 在 1.0→1.12 之间按分镜随机但确定（由 run seed 决定））→ 叠加 `subtitles=xxx.ass`（`fontsdir=C:/Windows/Fonts`）→ 输出中间片段（统一编码参数）。
+3. **拼接**：用 `xfade`（`transition=fade`，0.5s 重叠）按顺序串接所有片段；时长不足的分镜先用克隆帧延长，保证 `offset` 正确。
+4. **封装**：视频 `libx264 -preset medium -crf 20 -pix_fmt yuv420p -r 30`；音频 `aac -b:a 160k -ar 44100 -ac 2`；`-movflags +faststart`。
 
 **理由**：`yuv420p` + `H.264 High` + `faststart` 覆盖 SC-002（主流播放器与浏览器直接播放）；`-crf 20` 在 1080p 静帧推镜场景下与源图视觉无损；`xfade` 是 FFmpeg 内置且已验证可用。
 

@@ -88,6 +88,9 @@
 | `prompt` | LocalizedText | 是 | **必须为可视化导向句式**（分组 / 趋势 / 对比 / 分布）；不得仅含「多少 / 总计 / 统计 / 有几个」等聚合词——此类问法会被后端判为 `data` 意图，只返回单行聚合结果（见 research R3） |
 | `expect_chart` | bool | 否 | 默认 `true`；显式设为 `false` 表示该条仅作对照（用于观察 data 意图行为） |
 | `notes` | string | 否 | 人工备注，仅写入报告 |
+| `ai_recommend` | bool | 否 | 默认 `true`；`false` = 采集时取消勾选界面里的「使用 AI 推荐的图表配置」，改用手动选型（FR-016 的人工干预入口） |
+| `chart_type` | enum | 否 | 手动指定的图型（同 `ManualPlotSpec.chart_type` 的 12 种）；必须与 `ai_recommend = false` 同时给出，否则判 `content_invalid` |
+| `fields` | string[] | 否 | 在该图型的下拉框行里按顺序匹配并选中这些字段列名；必须与 `ai_recommend = false` 同时给出 |
 
 #### ManualPlotSpec（手动绘图素材 · 内容侧字段）
 

@@ -33,10 +33,25 @@
 
 ## 3. 健康检查（doctor 的 `ui_surface` 步骤）
 
-`ui_surface.py::check(page)` 在采集前执行，规则：
+锚点分三组，**分组是必须的**：图表与手动绘图相关的节点只有在对应交互发生之后才存在于 DOM 中，首屏检查不能把它们当作硬锚点。
+
+| 组 | 锚点 | 检查时机 | 缺失后果 |
+|----|------|----------|----------|
+| **首屏组** | A1、A3、A4、A6、A7、A15 | 打开前端首页后立即检查 | 抛 `UiSurfaceDrift`，退 `4` |
+| **图表组** | A10、A11、A12 | 首次成功出图之后（`probe`/`build` 内） | 抛 `UiSurfaceDrift`，退 `4`（说明「出图链路」已漂移） |
+| **手动绘图组** | A16 | 点击 `.mode-toggle` 并在界面中出现手动绘图区之后 | 抛 `UiSurfaceDrift`，退 `4` |
+
+**分组核对的分派规则（实测要求，不可交叉）**：
+
+1. `source=query` 的采集：只有 DOM 命中原生 Plotly 图（`snapshot.has_plotly`）时才核对**图表组**；判定为 `table_only`/`failed` 时**不得**核对（此时 `.chart-view` 本就不存在）。
+2. `source=manual` 的采集：出图后只核对**手动绘图组**。手动绘图成品图位于 `.manual-plot-demo` 内部，此时页面**没有** `.chart-view`/`.chart-view-body`——若误用图表组核对，会以 `E4 ui_surface_drift` 中断整轮探测（本机实测过：第 12 条候选后直接失败，`report.json` 未能生成）。
+3. 两条静态一致性由 `tests/test_video_commands.py` 覆盖（`test_probe_query_checks_chart_anchor_group` / `test_probe_manual_checks_manual_anchor_group` / `test_probe_skips_anchor_checks_when_no_plot`）。
+
+
+`ui_surface.py::check_page(page)` 执行首屏组核对，规则：
 
 1. 打开前端首页，等待 `.app` 出现且带 `data-lang`（超时 15 秒）。
-2. 断言 A1、A3、A4、A7、A10、A11、A15、A16 存在；任一项缺失 → 抛 `UiSurfaceDrift`，`doctor`/`probe` 以退出码 `4` 失败，并列出缺失项编号。
+2. 断言首屏组的 6 个锚点存在；任一缺失 → 抛 `UiSurfaceDrift`，`doctor`/`probe` 以退出码 `4` 失败，并列出缺失项编号。
 3. 触发一次最小提问，断言 A12 或 A8 二者之一出现（证明链路真的在动）。
 4. 输出一份 `ui_surface` 检查详情（命中的锚点编号 + 未命中的编号），写入 `report.json#preflight[]` 的 `detail`。
 
