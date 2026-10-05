@@ -1,0 +1,154 @@
+# 分镜内容定义（中英同构，人工可编辑；工具只读）
+#
+# 规则要点（见 specs/001-intro-video-generator/data-model.md §2.2）：
+#   * kind=chart_showcase 至少 3 个、manual_plot 至少 1 个、ui_explain 至少 1 个、bilingual_demo 恰好 1 个；
+#   * order 必须 1..N 连续；
+#   * chart_showcase 的 source 指向 candidates.toml 的 [[candidate]]（须判定为 chart_ok）；
+#     manual_plot 的 source 指向 [[manual]]；
+#   * 中英文案必须同时提供，且中文里不出现英文单词、英文里不出现中文。
+
+[meta]
+version = "1.0.0"
+target_duration_sec = [110, 190]
+languages = ["zh", "en"]
+
+  [meta.title]
+  zh = "用一句话问出你的实验数据"
+  en = "Ask your experimental data in one sentence"
+
+# ── 1. 开场 ─────────────────────────────────────────────────────────────────
+[[shot]]
+id = "intro"
+order = 1
+kind = "chart_showcase"
+source = "pct_pressure_capacity"
+zoom = "in"
+background = "blur_plate"
+  [shot.title]
+  zh = "用一句话问出你的数据"
+  en = "Ask your data in one sentence"
+  [shot.narration]
+  zh = "这是一个面向储氢材料实验数据的自然语言问答平台。不用写查询语句，也不用等人出图，只要把问题说清楚，图表就会自己出现。接下来用几个真实提问演示它的能力。"
+  en = "This is a natural-language analytics platform for hydrogen storage experimental data. No query language, no waiting for someone to draw charts. Just ask clearly, and the chart appears. Let us walk through a few real questions."
+
+# ── 2. 问答出图样例 ─────────────────────────────────────────────────────────
+[[shot]]
+id = "show_pct_scatter"
+order = 2
+kind = "chart_showcase"
+source = "pct_pressure_capacity"
+zoom = "in"
+  [shot.title]
+  zh = "平台压力与放氢容量"
+  en = "Plateau pressure vs capacity"
+  [shot.narration]
+  zh = "第一个问题：绘制全部 PCT 测试的平台压力与放氢容量散点图。系统自动生成查询并在真实数据上绘图，每一个点都是一次真实测试，压力高的材料容量往往更低，趋势一眼可见。"
+  en = "First question: plot a scatter chart of plateau pressure versus hydrogen capacity for all PCT tests. The system writes the query and plots it on real data. Every point is a real measurement, and the trade-off between pressure and capacity is visible at a glance."
+
+[[shot]]
+id = "show_cycle_laps"
+order = 3
+kind = "chart_showcase"
+source = "cycle_loop_pressure"
+zoom = "pan_right"
+  [shot.title]
+  zh = "循环寿命与压力"
+  en = "Cycling life vs pressure"
+  [shot.narration]
+  zh = "第二个问题：绘制各循环寿命测试的循环圈数与压力对比图。柱状图按测试逐条排列，几万次循环的样品与几十次的样品区别非常直观。"
+  en = "Second question: plot a bar chart comparing cycle laps against pressure for each cycling test. The chart lines up every test, so a sample that survived tens of thousands of cycles stands out immediately."
+
+[[shot]]
+id = "show_dsc_energy"
+order = 4
+kind = "chart_showcase"
+source = "dsc_rate_onset"
+zoom = "in"
+  [shot.title]
+  zh = "升温速率与活化能"
+  en = "Heating rate and activation energy"
+  [shot.narration]
+  zh = "第三个问题：绘制不同升温速率下的 DSC 起始温度与活化能趋势图。同一批样品在不同条件下的差异被清楚地摊开，方便直接放进汇报材料。"
+  en = "Third question: plot DSC onset temperature and activation energy trends at different heating rates. Differences between conditions are laid out clearly, ready to drop into a report."
+
+# ── 5. 手动绘图样例（FR-011）───────────────────────────────────────────────
+[[shot]]
+id = "show_manual_bubble"
+order = 5
+kind = "manual_plot"
+source = "manual_bubble"
+zoom = "in"
+  [shot.title]
+  zh = "也可以自己动手选图"
+  en = "Or build the chart yourself"
+  [shot.narration]
+  zh = "如果想自己掌控，手动绘图模式可以自由选择图型与字段。这里把放氢温度放在横轴、容量放在纵轴，颜色表示年份、气泡大小表示循环保持率。"
+  en = "If you prefer full control, the manual plotter lets you choose the chart type and fields. Here desorption temperature is on the horizontal axis, capacity on the vertical, colour is the year, and bubble size is retention."
+
+# ── 6. 双语能力（FR-012）───────────────────────────────────────────────────
+[[shot]]
+id = "bilingual_toggle"
+order = 6
+kind = "bilingual_demo"
+zoom = "in"
+  [shot.title]
+  zh = "一键切换中英文"
+  en = "Switch language in one click"
+  [shot.narration]
+  zh = "界面右上角可以随时切换语言，标题、按钮、坐标轴与说明文字会一起切换。同一套数据，可以给不同地区的同事演示。"
+  en = "The button in the header switches the language at any time. Titles, buttons, axes and captions all follow. The same data set works for colleagues in different regions."
+
+# ── 7. 界面说明（FR-015）───────────────────────────────────────────────────
+[[shot]]
+id = "explain_ui"
+order = 7
+kind = "ui_explain"
+zoom = "out"
+  [shot.title]
+  zh = "图表以外的部分"
+  en = "Beyond the chart"
+  [shot.narration]
+  zh = "结果区之外，左侧的配置区用于加载数据表结构，图表上方可以重置视图或导出图片。整个过程不需要写查询语句，也不需要打开数据库客户端。"
+  en = "Outside the result area, the configuration panel loads the database schema, and the toolbar above the chart can reset the view or export an image. No query writing, and no database client needed."
+
+# ── 8. 第二个手动绘图样例 ──────────────────────────────────────────────────
+[[shot]]
+id = "show_manual_heatmap"
+order = 8
+kind = "manual_plot"
+source = "manual_heatmap"
+zoom = "pan_left"
+  [shot.title]
+  zh = "多指标一屏对比"
+  en = "Many metrics on one screen"
+  [shot.narration]
+  zh = "换一种图型，热力图会把材料的多个数值指标并排铺开，颜色越亮代表数值越高，几十条材料记录之间的差异立刻显现出来。"
+  en = "Switching chart type, a heatmap lays several numeric metrics side by side. Brighter cells mean higher values, so differences across dozens of materials appear immediately."
+
+# ── 9. 关闭 AI 推荐、手动选图型（FR-016 的人工干预入口）───────────────────
+[[shot]]
+id = "show_manual_choice"
+order = 9
+kind = "chart_showcase"
+source = "papers_by_year"
+zoom = "in"
+  [shot.title]
+  zh = "也可以自己定图型"
+  en = "Or pick the chart yourself"
+  [shot.narration]
+  zh = "如果 AI 推荐的图型不合心意，把「使用 AI 推荐的图表配置」取消勾选，图表类型、横轴纵轴都能自己选。这里改成柱状图看各年份的文献数量。"
+  en = "If the recommended chart is not what you want, clear the AI recommendation switch and choose the chart type and axes yourself. Here we switch to a bar chart of papers by year."
+
+# ── 10. 收尾 ───────────────────────────────────────────────────────────────
+[[shot]]
+id = "outro"
+order = 10
+kind = "outro"
+zoom = "in"
+background = "blur_plate"
+  [shot.title]
+  zh = "让数据回答你的问题"
+  en = "Let your data answer"
+  [shot.narration]
+  zh = "不用等排期，也不用学语法。把问题说清楚，剩下的交给平台。这就是面向实验数据的自然语言问答体验。"
+  en = "No waiting for a data team, no syntax to learn. Describe the question, and the platform does the rest. That is natural-language analytics for experimental data."

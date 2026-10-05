@@ -1,0 +1,128 @@
+# 候选提问与手动绘图素材（人工可编辑，工具只读）
+#
+# 提问写法要点（见 specs/001-intro-video-generator/research.md R3）：
+#   * **句首必须出现绘图动词**（绘制 / 画 / 图表类名词：散点图、柱状图、趋势图、分布直方图）——
+#     后端 ai/prompts.py 的意图规则是「不确定时优先判为 data；只有明确提到绘图/图表类词汇才判为 chart」，
+#     实测以「对比…」开头的问句会被判成 data/chat，只回文字与表格，画不出图；
+#   * 句式用「分组 / 分布 / 趋势 / 关系」，避免「多少 / 总计 / 一共有几个」这类聚合问法——
+#     聚合问法命中 INTENT: data 只返回单行结论，永远达不到 ≥10 数据点；
+# 表名与列名对应 video/runs 里 probe 报告中的真实 schema（pct / cycle / dsc / isothermal / tpd …）。
+#
+# 出图控制（可选键，默认全部走 AI 推荐）：
+#   * ai_recommend = false —— 采集前取消勾选界面里的「使用 AI 推荐的图表配置」；
+#   * chart_type           —— 关闭 AI 推荐后手动指定图型（必须是 ChartView 的 12 种之一）；
+#   * fields               —— 手动在该图型的下拉框行里依次挑选字段（列名必须与数据表一致）。
+#   chart_type / fields 与 ai_recommend 缺省（true）同时出现会被判为 content_invalid。
+
+[meta]
+version = "1.0.0"
+
+[[candidate]]
+id = "pct_pressure_capacity"
+expect_chart = true
+notes = "散点：平台压力 vs 放氢容量，点数为 PCT 测试条数"
+  [candidate.prompt]
+  zh = "绘制全部 PCT 测试的平台压力与放氢容量散点图"
+  en = "Plot a scatter chart of plateau pressure versus hydrogen capacity for all PCT tests"
+
+[[candidate]]
+id = "pct_temp_capacity"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制不同温度下 PCT 测试的容量与焓变对比图"
+  en = "Plot capacity and enthalpy change across PCT tests at different temperatures"
+
+[[candidate]]
+id = "cycle_loop_pressure"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制各循环寿命测试的循环圈数与压力对比图"
+  en = "Plot a bar chart comparing cycle laps against pressure for each cycling test"
+
+[[candidate]]
+id = "cycle_type_laps"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制两类循环测试的循环圈数分布图"
+  en = "Plot the distribution of cycle laps between the two cycling test types"
+
+[[candidate]]
+id = "dsc_rate_onset"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制不同升温速率下的 DSC 起始温度与活化能趋势图"
+  en = "Plot DSC onset temperature and activation energy trends at different heating rates"
+
+[[candidate]]
+id = "dsc_energy_onset"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制各 DSC 测试的活化能与起始温度关系图"
+  en = "Plot activation energy against onset temperature for all DSC tests"
+
+[[candidate]]
+id = "isothermal_energy_pressure"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制各等温吸放氢测试的活化能与压力对比图"
+  en = "Plot activation energy against pressure across isothermal hydrogen uptake tests"
+
+[[candidate]]
+id = "tpd_onset_temp"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制各 TPD 测试的起始温度分布直方图"
+  en = "Plot a histogram of onset temperature across TPD tests"
+
+[[candidate]]
+id = "catalysis_addition"
+expect_chart = true
+  [candidate.prompt]
+  zh = "绘制各催化改性实验的催化剂添加量分布图"
+  en = "Plot the distribution of catalyst addition volume across catalysis experiments"
+
+[[candidate]]
+id = "papers_by_year"
+expect_chart = true
+# 关闭 AI 推荐 + 手动选型：采集时取消勾选「使用 AI 推荐的图表配置」，
+# 再在「图表类型」行里选柱状图，并把横轴/纵轴分别指到 year / article_count。
+ai_recommend = false
+chart_type = "bar"
+# 列名随后端 SQL 别名变化（实测同一问句会出现 article_count / paper_count），
+# 故匹配规则放宽为「忽略大小写全等 → 忽略大小写包含」，写 count 即可命中 paper_count。
+fields = ["year", "count"]
+notes = "关闭 AI 推荐后手动选型：年份 → 文献数量柱状图（演示人工干预入口）"
+  [candidate.prompt]
+  zh = "绘制各年份文献数量的柱状图"
+  en = "Plot a bar chart of paper counts by publication year"
+
+# 对照项：聚合问法只返回单行结果（应判定为 table_only，不得进片）
+[[candidate]]
+id = "count_pct"
+expect_chart = false
+notes = "对照项：用来展示「问数」模式只给单行结论；也是唯一允许不带绘图动词的问句"
+  [candidate.prompt]
+  zh = "一共有多少条 PCT 测试记录"
+  en = "How many PCT test records are there in total"
+
+# ── 手动绘图素材（字段名必须是手动绘图器提供的字段）──────────────────────────
+# 可用字段：capacity / desorptionTemp / retention / kinetics / year / pressure
+[[manual]]
+id = "manual_bubble"
+chart_type = "bubble"
+x_field = "desorptionTemp"
+y_fields = ["capacity"]
+color_field = "year"
+size_field = "retention"
+notes = "气泡图：放氢温度 vs 容量，颜色为年份、大小为循环保持率"
+  [manual.title]
+  zh = "放氢温度与容量的气泡分布"
+  en = "Desorption temperature vs capacity bubble map"
+
+[[manual]]
+id = "manual_heatmap"
+chart_type = "heatmap"
+notes = "热力图：自动使用全部数值列"
+  [manual.title]
+  zh = "材料数据的多指标热力图"
+  en = "Multi-metric heatmap of material data"
