@@ -329,3 +329,232 @@ recommended 11 + manual 2）→ `build --lang both`（`demo-zh.mp4` 136.267s、`
   因此 T052 的「该分镜变化、未改动分镜保持一致」在**确定性输入**（手动绘图）上以 sha256 证明（SSIM = 1.000000）；
   在问答出图上只能断言到**内容定义层**（13 条候选中仅目标 1 条 `prompt` 变化，其余 12 条逐字相同）与**历史产物层**（`V12` ok、旧 sha256 不变）。
 - `probe` 预检失败留下的 run 目录会成为「最新 run」，导致后续不带 `--run-id` 的 `build` 取到空报告（退出码 5、不产半成品）；已在 quickstart / README 记录处置方式。
+
+---
+
+## 增量变更（2026-10-07）：增加「吸氢 / PCT 提问出图」环节
+
+**触发**：负责人反馈成片「提问得到图形展示的太少了」——原片只在 s07 讲了「氢容量随平台压力」一处；要求再加几个与吸氢、PCT 有关的提问出图环节，图表仍须「数据点较多 + 图形美观」，其余内容不动，语序若变则同步调整。
+
+**规格同步（先改规格再改实现）**：
+
+- `spec.md` FR-010：「≥3 个问答出图样例」→「≥4 个，且 MUST 覆盖两种以上数据主题（例如 PCT 与吸氢侧的等温吸放氢测试）」；
+- `spec.md` SC-004：同步为 ≥4 个（其中吸氢侧主题 ≥1 个）；
+- `spec.md` Assumptions：成片时长量级由 2–3 分钟放宽为 2–3.5 分钟（实测 3:30 中 / 3:26 英）。
+
+**实施（全部落在 `remotion-intro/`，即产线成片的新实现，不触碰平台运行时代码）**：
+
+- [x] T101 真实提问采集：`tools/capture_real.py` 新增 `ISO_Q`（等温吸放氢测试激活能 vs 压力，实测 751 行）与 4 个新状态 —— `24-uptake-typed` / `25-uptake-scatter` / `26-fields-typed` / `27-compare-typed`。typed 状态**只打字不提交**：前端提交后会清空输入框，所以「提问那一刻」必须单独采；`26` / `27` 输入的正是产出 06/08/09 图表的那两句原话。
+- [x] T102 新增分镜组件 `src/shots/PUptake.tsx`、`PFields.tsx`、`PCompare.tsx`，注册进 `src/Promo.tsx`；`tools/gen_timeline.py` 的 `SHOTS` 放行 `Uptake` / `Fields` / `Compare`。
+- [x] T103 `tools/script.json` 插入 s08（吸氢）/ s09（PCT 五字段）/ s10（PCT 工艺类型）三幕台词，中英各 8 句；后续幕 id 顺移（s08→s11、s09→s12、s10→s13、s11→s14），保证音频文件名前缀 `sNN` 唯一。
+- [x] T104 `npm run tts` 重录配音并重算 `src/timeline.ts`；删除 12 个因改号而失效的 mp3（无孤儿音频）。
+- [x] T105 校验：`tsc --noEmit` 零错误；10 张代表帧静帧人工核对（三幕的提问画面、751 点散点、162 点三维散点与平行坐标、503 点箱线分布，外加既有 s11 / s12 未回归）；`npm run render-zh` / `render-en` 重出母版与网页版。
+- [x] T106 文档同步：`remotion-intro/README.md`「叙事结构」改为 14 幕并补三条新问句、目录结构与配音条数更新。
+
+**验收对照**：
+
+| 判据 | 证据 |
+|------|------|
+| FR-010 / SC-004：≥4 个问答出图且覆盖两种主题 | s07 压力-容量 1000 点（PCT）· s08 激活能-压力 751 点（等温吸放氢）· s09 五字段 162 点（三维散点 → 平行坐标）· s10 工艺类型 503 点（箱线） |
+| FR-007 / FR-008：数据点较多 | 逐幕 1000 / 751 / 162×5 / 503，均远超阈值 10 |
+| FR-009 / SC-005：排版美观 | 静帧核对：坐标轴、图例、色阶完整，无标签重叠与文字截断（中文版轴标签已取中文别名：测试编号 / 激活能 / 压力） |
+| FR-002 / FR-003 / FR-004：真实链路 | 新截图由 `capture_real.py` 直连真实后端采集（真库 + 真实大模型提问），画面问句与图表同源，未使用模拟数据 |
+| SC-006：无报错 / 空白 / 纯表格 | 新幕静帧均无错误提示、空白图表或纯表格 |
+| FR-021 / SC-003：中英同构 | 三幕中英分镜数量、顺序、时长差一致，仅文案与界面语言不同 |
+
+**本轮成片规格（实测 · 2026-10-07）**：
+
+| 版本 | 时长 | 帧数 | 母版（crf 18） | 网页版（crf 24） |
+|------|------|------|----------------|------------------|
+| 中文 | 3:30.5（210.45 s） | 6313 | 121,346,992 B | 50,118,952 B |
+| 英文 | 3:26.0（206.04 s） | 6181 | 124,873,776 B | 49,663,038 B |
+
+- 帧数与 `src/timeline.ts` 的 `TOTAL_FRAMES`（6313 / 6181）逐帧一致；抽 9 个代表帧（含新三幕的中英各帧 + 既有 s11 回归帧）与渲染前静帧比对，PSNR 35.8–38.4 dB，无空白帧。
+- 配音覆盖：新幕 16 条 cue 全部有音频（3.79–6.96 s），字幕文本与 `tools/script.json` 逐字一致（`out/_check/qa_audio.py`）。
+- 已装站内：`frontend\public\demo.mp4` / `demo-en.mp4` + `demo-poster{,-en}.jpg`，并 `-Build` 重建 `frontend\dist`；旧文件备份于 `out\site-backup\20261007-155835-*`，旧母版备份于 `out\_check\promo-{zh,en}-prev.mp4`。
+
+**已知限制 / 取舍**：
+
+- 总时长由 2:48.8 / 2:44.5 增至 **3:30.4 / 3:26.0**（超出 `gen_timeline.py` 的 2–3 分钟软提示，属负责人「多展示」的直接后果，软提示保留）。
+- 英文界面图表仍为浅色主题：产品侧既有问题（`ChartView.tsx` 以 `lang === 'zh'` 判定深色），新幕与既有英文幕保持一致，未做单侧修饰。
+- s09 / s10 的「提问」画面与随后切出的图表来自同一问句的**不同会话**（图表沿用 2026-10-06 采集的 06 / 08 / 09 状态，不重采以免动到既有幕），提交后输入框本就清空，画面之间无矛盾。
+
+---
+
+## 增量变更（2026-10-07 · 第二批）：三个「不点明图型」的提问出图
+
+**触发**：负责人要求再加三段「不点明图型、只说意图」的提问 —— AI 自己判断该用哪种图形类别，
+用来展示平台「换一种问法就换一种图」的能力；并明确要求**问句必须以「绘制」这类绘图动词开头**，
+否则意图会被判成 chat / 问数，问不出图。
+
+**实施（同样全部落在 `remotion-intro/`）**：
+
+- [x] T201 问法预检：`out/_check/probe_q.py`（一次性探针，直连 `/api/query`，打印 intent / 行列 / 推荐类型 / SQL）
+      逐一试措辞，先定死三句能稳定命中目标图型的问法（详见下「选型结论」）。
+- [x] T202 `tools/capture_real.py` 新增 `TREND_Q` / `SHARE_Q` / `COMPARE_Q` 与 6 个状态：
+      `28-trend-typed` / `29-share-typed` / `30-compare-typed`（只打字不提交）+
+      `31-trend-line` / `32-share-pie` / `33-compare-bar`（出图结果）。
+- [x] T203 `ask_type()` 升级：旁听 `/api/query` 响应核对 `chart_type` 是否等于期望值（不等就重问，最多 4 次）；
+      中文版追加「`columns` 必须是中文别名」校验（AI 勾选时前端不渲染图型下拉，只能这样核）。
+- [x] T204 新增分镜组件 `src/shots/AskPlot.tsx`（一个组件三幕复用：打字拍对准输入框 + 脉冲点，
+      出图拍分别标注「推荐理由」与「数据规模」），导出 `PTrend` / `PShare` / `PBars`，
+      注册进 `src/Promo.tsx` 的 `SHOTS`，并放行 `gen_timeline.py` 的 `Trend` / `Share` / `Bars`。
+- [x] T205 `tools/script.json` 在 s10 之后插入 s11（趋势）/ s12（占比）/ s13（对比）三幕，中英各 9 句；
+      后续幕 id 顺移（s11→s14、s12→s15、s13→s16、s14→s17），音频前缀 `sNN` 保持唯一。
+- [x] T206 `npm run tts` 重录配音并重算 `src/timeline.ts`；删除 10 个因改号而失效的 mp3（无孤儿音频，音频总数 104 = 52 句 × 2 语言）。
+- [x] T207 校对：`tsc --noEmit` 零错误；6 个新状态的中英静帧人工核对（提问文字、AI 推荐理由、图表本身、字幕与角标一致）。
+- [x] T208 文档同步：`remotion-intro/README.md` 叙事结构改为 17 幕、补三句新问法、目录结构 / 截图与配音条数更新。
+
+**选型结论（都是实测出来的，不是设计约定）**：
+
+| 幕 | 中文问法 | 英文问法 | AI 推荐 | 真实结果 |
+|----|----------|----------|---------|----------|
+| s11 趋势 | 绘制 PCT 测试平均放氢容量随温度变化的趋势，列名用中文 | plot the trend of average hydrogen capacity against temperature across the PCT tests | `line` | 103 个温度点连成一条曲线（列名 `温度` / `平均放氢容量`） |
+| s12 占比 | 绘制 PCT 测试中吸氢与放氢记录各占多少，列名用中文 | plot the proportion of absorption and desorption records in the PCT tests | `pie` | `pct.type` 两个取值 46.7% / 53.3% |
+| s13 对比 | 绘制 PCT 测试每 50 K 温度区间的平均放氢容量对比，哪个区间最高？列名用中文 | plot average hydrogen capacity per 50 K temperature range and show which range is highest | `bar` | 10 档（550~600 K 最高） |
+
+- **直方图问不出来（本轮实测结论，已在 README 记录）**：AI 遇到「分布 / 集中在哪些区间」会在 SQL 里
+  先分箱（返回「区间 + 计数」两列），于是稳定推荐 `bar`；若强调「逐条原始值、不要分组」，
+  问数模式的安全策略会直接以 `intent=chat` 拒绝并给出改写建议。因此第二版三幕选了折线 / 饼 / 柱。
+- 不带绘图动词时（例如「按工艺类型统计…占比」）意图会被判成 data / chat，问不出图；加「绘制」后稳定为 chart。
+- 英文版同一句换成英文提问时，`chart_type` 与中文版一致（`line` / `pie` / `bar`），但列名是原始英文列名 —— 与英文版既有幕一致。
+
+**验收对照**：
+
+| 判据 | 证据 |
+|------|------|
+| 三幕都不点明图型且 AI 各自推荐不同图形类别 | `line` / `pie` / `bar` 三种，均为旁听到的真实 `/api/query` 响应 |
+| 问句含绘图动词、意图稳定命中 chart | 三句都以「绘制」开头，中英各一次命中（`ask_type` 日志为 `AI 推荐[1/4]`） |
+| FR-004：真实链路 | 6 个状态由 `capture_real.py` 直连真实后端采集，问句与图表同源 |
+| SC-006：无报错 / 空白 / 纯表格 | 6 张静帧人工核对通过（折线 103 点、饼图 2 片、柱状 10 档） |
+| FR-021 / SC-003：中英同构 | 三幕中英分镜数量、顺序一致，仅文案与界面语言不同 |
+
+> 注：本批「问题里不出现任何图型词」的叙述已被第三批取代（见下），三句问法最终以**句尾点名图型**呈现。
+
+---
+
+## 增量变更（2026-10-07 · 第三批）：三句提问改为「句尾点名图型」
+
+**触发**：负责人追加要求 —— 「提问后面可以明确一下要生成哪种图」。即把 s11–s13 的问法从「只说意图、
+选型交给 AI」改成「说清意图 + 句尾点名图型」，解说词、画面标注、屏幕上的问句与配音全部同步改。
+
+**实施（仍全部落在 `remotion-intro/`）**：
+
+- [x] T209 新问法预检（`out/_check/probe_q.py`，zh + en 各 4 条）：点名后三句仍**一次命中**
+      `line` / `pie` / `bar`；另加测「点名直方图」—— 中文问法仍推荐 `bar`（AI 先把容量分成 15 个
+      0.5 区间再出「区间 + 计数」），英文问法退化成 `scatter`（`bin_start` × `bin_end` 两个数值列），
+      结论：**直方图点名也问不出来**，三幕继续用折线 / 饼 / 柱。
+- [x] T210 `tools/capture_real.py`：三句问法改为「…，用折线图 / 用饼图 / 用柱状图，列名用中文」（英文对应
+      `as a line / pie / bar chart`）；`ask_type()` 新增 `expect_rows` 校验（饼图固定 2 行 —— 否则大模型会
+      用 `CASE … ELSE '未知'` 多分出一类，与「两类记录各占多少」的标注不符），注释与文档串同步。
+- [x] T211 重采 zh + en 的六个状态（28/29/30 打字中，31/32/33 出图后）：
+      zh `line` 103 行 × 2 列（温度 / 平均放氢容量）、`pie` **2 行 × 2 列**（类型 / 记录数）、`bar` 10 行 × 2 列；
+      en `line` 103 × 2、`pie` 2 × 2、`bar` 10 × 3（x 轴取区间下限 `temp_range_low`，同样 10 根柱）；
+      六次全部 `AI 推荐[1/4]`（第一次就对）。
+- [x] T212 文案与时间轴：`src/shots/AskPlot.tsx` 的标注改为「点名」口径（ask / reason / data / tag + 注释），
+      `tools/script.json` 的 s11–s13 中英各 3 句改写 → `npm run tts` 只重合成 14 句（其余命中
+      `tools/.tts-cache.json`）→ `src/timeline.ts` 重算。
+- [x] T213 校对与 QA：`tsc --noEmit` 零错误（`out/_check/typecheck_v2.log` ✓）；`out/_check/qa_v2.py` 帧号已按新
+      时间轴更新（zh 4153 / 4431 / 4784 / 5159，en 4015 / 4290 / 4668 / 5030，回归帧 2700），出片后自动跑；
+      静帧人工复核（问句在框内不溢出、标注与字幕一致、图表无报错/空白，静帧见 `out/_check/still-*.png`）；
+      `qa_audio.py` 复核字幕与 `script.json` 逐字一致。
+- [x] T214 出片与发布：`npm run render-zh` / `render-en` 已出片（7458 / 7326 帧）；随后因第四批的「空白尾巴」
+      bug 又整条重出一次，**最终发布的是重出后的母版**（zh 137.39 MB / en 143.75 MB，见第四批），
+      并由后台链执行 `npm run install-site -- -Build` 换掉站内 `demo.mp4` / `demo-en.mp4` 与两张 poster
+      （证据：`out/_check/post-render3.txt`、`verify-site.txt`、`rerender-report.txt`、`site-files-final.txt`）。
+- [x] T215 文档同步：`README.md` 的叙事结构（s11–s13 行）、`AskPlot.tsx` 目录注释、问法表三行、
+      截图/配音条数已更新；成片「时长 / 体积」两行由 `out/_check/finish_report.py` 在出片后按真实文件
+      回填（汇总见 `out/_check/final-verify.txt`）。
+
+**第三批最终问法与结果**：
+
+| 幕 | 中文问法（点名段加粗） | 英文问法 | AI 推荐 | 真实结果 |
+|----|------------------------|----------|---------|----------|
+| s11 趋势 | 绘制 PCT 测试平均放氢容量随温度变化的趋势，**用折线图**，列名用中文 | plot the trend of average hydrogen capacity against temperature across the PCT tests **as a line chart** | `line` | 103 行 × 2 列（温度 / 平均放氢容量） |
+| s12 占比 | 绘制 PCT 测试中吸氢与放氢记录各占多少，**用饼图**，列名用中文 | plot the proportion of absorption and desorption records in the PCT tests **as a pie chart** | `pie` | 2 行 × 2 列（类型 / 记录数 → 吸氢 46.7% / 放氢 53.3%） |
+| s13 对比 | 绘制 PCT 测试每 50 K 温度区间的平均放氢容量对比，**用柱状图**，哪个区间最高？列名用中文 | plot average hydrogen capacity per 50 K temperature range **as a bar chart** and show which range is highest | `bar` | 10 根柱（zh 轴为「温度区间」，en 轴为区间下限，550~600 K 最高） |
+
+- 时长随改词变长：zh 由 6313 帧（3:30.4）增至 **7458 帧（4:08.6）**、en 由 6181 帧（3:26.0）增至
+  **7326 帧（4:04.2）**；`gen_timeline.py` 的 2–3 分钟软提示继续保留（超出提示仍在，未放宽门禁）。
+- 与页面自身提示自洽：站内输入区提示语正是「想绘图时可注明图表类型（如"用折线图展示温度随时间的变化"）」，
+  三句问法采用的即这种写法。
+
+**验收对照（第三批）**：
+
+| 判据 | 证据 |
+|------|------|
+| 三句问法句尾点名图型，且屏幕上的问句与解说词一致 | 静帧里输入框文字 = `TREND_Q` / `SHARE_Q` / `COMPARE_Q`；字幕逐字来自 `script.json` |
+| 点名的图型就是画出来的图型 | `/api/query` 响应 `chart_type` 为 `line` / `pie` / `bar`，与响应同名状态截图一致 |
+| 饼图确实只有两类 | `expect_rows=2` 校验生效，中英各拿到 2 行（46.7% / 53.3%），无第三类 |
+| 中英同构 | 三幕中英分镜数量、顺序一致（各 3 句），仅语言与界面主题不同 |
+| 回归无破坏 | 老场景帧（2700）与既有幕静帧 PSNR 通过；`tsc --noEmit` 零错误 |
+
+
+## 增量变更（2026-10-07 · 第四批）：修掉「每幕最后一句台词期间界面全透明」
+
+**触发**：负责人复看成品时发现 s10–s13 / s16 每幕的**最后一句点题台词**期间整块网页界面全透明 ——
+屏幕上只剩背景网格与字幕（中文版合计 ≈19 s、英文版 ≈22 s）。画面里的数据本身没问题（都由真实链路采的），
+是**渲染层 bug**。
+
+**根因**：`AskPlot` / `PCompare` / `PUptake` / `PManualPlot` 原先用 `idx = min(画面数 - 1, 拍序)` 取
+`start / end`。当一幕的**台词句数多于该分镜的画面数**时（例：s11–s13 各三句台词，却只有「打字 / 出图」
+两张画面），`end = bounds[idx + 1]` 已落在当前帧之前 → `leave` 插值恒为 0 → `opacity = enter × leave = 0`，
+于是第三句台词期间那张画面死透。
+
+**修复**：四个分镜改为 `start = bounds[idx]`、`end = bounds[beat + 1]` —— **拍序（第几句台词）与画面
+（显示哪张截图）分开算**，出场时间取本拍真实结束时刻；`PFields` / `PGallery` 的台词句数与画面数相等，
+未改（两处都补了注释说明为什么必须这样取）。
+
+**实施**：
+
+- [x] T216 改 `src/shots/AskPlot.tsx` / `PCompare.tsx` / `PUptake.tsx` / `PManualPlot.tsx`；`npm run typecheck` 零错误。
+- [x] T217 新增回归脚本 `out/_check/qa_visible.py`：取每句台词的中点帧，量「网页界面框」区域的最亮像素
+      （crop 1456x820@232,78 → 64x36 灰度）——**空白恒为 42、真实内容 ≥67**，阈值 55；对未修的母版可精确
+      报出这 10 处（10 BAD）。
+- [x] T218 新增 `out/_check/qa_dense.py`：在上一次出片报出的 5 个空白窗口里**逐帧**扫，防「只有中点帧
+      正常」的漏网（母版 + 网页版各跑一遍）。
+- [x] T219 整条重出两版母版与网页版（`out/_check/chain7_rerender.ps1` → `post_chain7.ps1`），
+      时长与帧数**未变**（没裁内容）；随后 `npm run install-site -- -Build` 换站内文件与两张 poster。
+- [x] T220 文档同步：`remotion-intro/README.md`「已知坑」补该 bug 的现象 / 根因 / 修法与两个回归脚本；
+      `out/_check/review-notes.md` 记新旧对照与证据清单。
+
+**本轮成片规格（实测 · 2026-10-07，内容未裁剪）**：
+
+| 版本 | 时长 | 帧数 | 母版（crf 18） | 网页版（crf 24） | 站内文件 sha256（前 12 位） |
+|------|------|------|----------------|------------------|-----------------------------|
+| 中文 | 4:08.6（248.619 s） | 7458 | 137.4 MB | 57.0 MB | `A40B59227F94` |
+| 英文 | 4:04.2（244.203 s） | 7326 | 143.8 MB | 57.5 MB | `55B951DD979E` |
+
+- 重出耗时：zh 13.9 min（17:37→17:51）、en 14.2 min（17:51→18:05）；两版编码参数未动
+  （母版 crf 18、网页版 crf 24 + faststart）。
+- 站内一致性：`out/promo-{zh,en}-web.mp4` = `frontend/public/demo{,-en}.mp4` = `frontend/dist/demo{,-en}.mp4`
+  三处逐字节相同（sha256 对比，`out/_check/site-files-final.txt`）。
+
+**验收对照（第四批）**：
+
+| 判据 | 证据 |
+|------|------|
+| 每句台词期间界面都可见 | `qa_visible.py`：修复前 10 BAD → 修复后 **0 BAD**（`qa-visible-before.txt` / `qa-visible-after.txt`，报告尾行 `空白幕数: 0`） |
+| 原空白窗口内无漏网帧 | `qa_dense.py`：zh 5 窗口 230 采样最低 83、en 5 窗口 122 采样最低 192（空白为 42），**0 帧**低于阈值；网页版复测同样 0（`qa-dense-after.txt` / `qa-dense-web.txt`） |
+| 未回归 | `qa_v2.py` 10/10 OK，PSNR 34.79–37.06 dB，基线拍 2700 / 4153 / 4015 与修复前一致（`post-chain7-report.txt`） |
+| 配音与字幕未受影响 | `qa_audio.py` problems = 0（`qa-audio-after.log`） |
+| 站内就是本轮母版的网页版 | 三处 sha256 相同（见上表） |
+
+- 旧 QA 为什么漏判：`qa_v2.py` 的参考静帧是**用有 bug 的代码**渲的，参考帧自己就是空白（screen-box 峰值
+  全为 42），于是「像不像」永远通过；这批静帧已归档到 `out/_check/blank-stills-archive/`（6 张）。
+- 人工复核素材：`out/_check/verify-zh-fixed-spots.mp4`（29.6 s）/ `verify-en-fixed-spots.mp4`（32.0 s）
+  —— 把 10 处修复点拼成分段带标注的合辑，`selfcheck_verify_clips.py` 自检 10/10 OK。
+
+**已知限制 / 取舍**：
+
+- 母版与网页版体积较上一版略增（zh 127.8 MiB → 137.4 MB，en 143.8 MB）：修好后多出来的帧现在都是有画面的
+  内容帧，编码参数未放宽。
+- 英文界面图表仍是浅色主题（`ChartView.tsx` 以 `lang === 'zh'` 判定深色）：产品侧既有问题，本轮不动。
+- 站内旧文件已备份到 `out/site-backup/20261007-180537-*`（上一版 `demo.mp4` 53.35 MB / `demo-en.mp4`
+  53.28 MB + 两张 poster）；母版与 `out/` 不进 git（`.git/info/exclude`），随版本入库的是
+  `frontend/public/demo{,-en}.mp4` 与两张 poster。
+- 本轮遗留：`out/_check/chain7_rerender.ps1` 的历史报告里把 `Get-FileHash`（默认 SHA256）标成了 `sha1=`，
+  已在该脚本里更正为 `sha256=`；本轮之前的报告文件保留原样，不改写历史证据。
+
+
+
